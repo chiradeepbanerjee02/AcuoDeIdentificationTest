@@ -24,6 +24,9 @@ param()
 # Set error action preference
 $ErrorActionPreference = "Continue"
 
+# Load required assemblies
+Add-Type -AssemblyName System.Web
+
 # Define paths
 $scriptDir = $PSScriptRoot
 $reportPath = Join-Path $scriptDir "Reports.html"
@@ -134,7 +137,7 @@ function Get-DeIdentificationLog {
     }
     
     try {
-        $logLines = Get-Content -Path $deidentifyLogPath
+        $logLines = @(Get-Content -Path $deidentifyLogPath -Tail 50)
         
         if ($logLines.Count -lt 2) {
             return @{
