@@ -7,14 +7,14 @@
 .DESCRIPTION
     This script generates a comprehensive HTML report (Reports.html) that includes:
     1. Installation status by checking if the AcuoDeidentification Windows service is running
-    2. Test execution results from RestDeIdTests.ps1
+    2. Test execution results from InputWatchTest.ps1
     3. DeIdentification log analysis
 
 .EXAMPLE
     .\Generate-Report.ps1
 
 .NOTES
-    - Run this script after Install-DeIdentification.ps1 and RestDeIdTests.ps1
+    - Run this script after Install-DeIdentification.ps1 and InputWatchTest.ps1
     - The report will be generated in the current directory as Reports.html
 #>
 
