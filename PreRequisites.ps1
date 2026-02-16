@@ -131,9 +131,10 @@ function Stop-AcuoDeidentificationService {
         
         if ($service.Status -eq 'Running' -or $service.Status -eq 'StartPending' -or $service.Status -eq 'Paused') {
             Write-ColoredOutput "Stopping $ServiceName service..." "INFO"
+            # Force flag will handle paused services by stopping them directly
             Stop-Service -Name $ServiceName -Force -ErrorAction Stop
             
-            # Wait for service to stop with timeout
+            # Wait for service to stop with timeout (30 seconds should be sufficient for graceful shutdown)
             $timeout = 30
             $elapsed = 0
             while ($elapsed -lt $timeout) {
