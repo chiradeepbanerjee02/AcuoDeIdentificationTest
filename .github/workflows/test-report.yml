@@ -1,18 +1,24 @@
-name: Test Report Generation
+---
+name: DeIdentification Tests
 
 on:
   push:
-    branches: [ main1, master ]
+    branches:
+      - main1
+      - master
   pull_request:
-    branches: [ main1, master ]
+    branches:
+      - main1
+      - master
   workflow_dispatch:
 
 jobs:
-  test-and-report:
-    runs-on: self-hosted
+  test:
+    name: Execute DeIdentification Tests
+    runs-on: ['self-hosted', 'Windows', 'X64']
     permissions:
       contents: read
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,11 +50,11 @@ jobs:
             -ForegroundColor Green
           & "$env:GITHUB_WORKSPACE\Install-AcuoDeIdentification.ps1"
 
-      - name: Execute Tests
+      - name: Execute Deidentification Tests
         shell: pwsh
         run: |
-          Write-Host "Starting DeID Tests..." -ForegroundColor Cyan
-          ./Execute-RestDeIdTests.ps1
+          Write-Host "Starting DeIdentification Tests..." -ForegroundColor Cyan
+          ./RestDeIdTests.ps1
 
       - name: Upload HTML Report
         uses: actions/upload-artifact@v4
