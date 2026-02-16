@@ -91,6 +91,18 @@ function Get-InstallationLog {
             $status = "Warning"
             $details = "AcuoDeidentification service is stopping"
         }
+        elseif ($service.Status -eq 'Paused') {
+            $status = "Warning"
+            $details = "AcuoDeidentification service is paused"
+        }
+        elseif ($service.Status -eq 'PausePending') {
+            $status = "Warning"
+            $details = "AcuoDeidentification service is pausing"
+        }
+        elseif ($service.Status -eq 'ContinuePending') {
+            $status = "Warning"
+            $details = "AcuoDeidentification service is resuming"
+        }
         else {
             $status = "Unknown"
             $details = "AcuoDeidentification service is in $($service.Status) state"
