@@ -3,7 +3,7 @@
 
 <#
 .SYNOPSIS
-    REST DeIdentification Test Script
+    Input Watch Test Script
 
 .DESCRIPTION
     This script performs the following test operations:
@@ -12,7 +12,7 @@
     3. Verifies the deidentification log for successful completion
 
 .EXAMPLE
-    .\RestDeIdTests.ps1
+    .\InputWatchTest.ps1
 
 .NOTES
     - This script requires Administrator privileges
@@ -151,7 +151,7 @@ function Test-LogFileContent {
 # Main execution
 try {
     Write-Host "`n========================================" -ForegroundColor Cyan
-    Write-Host "REST DeIdentification Test Script" -ForegroundColor Cyan
+    Write-Host "Input Watch Test Script" -ForegroundColor Cyan
     Write-Host "========================================`n" -ForegroundColor Cyan
     
     Write-ColoredOutput "Test script started" "INFO"

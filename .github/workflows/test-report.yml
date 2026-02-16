@@ -54,7 +54,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Starting DeIdentification Tests..." -ForegroundColor Cyan
-          ./RestDeIdTests.ps1
+          ./InputWatchTest.ps1
 
       - name: Generate HTML Report
         shell: pwsh
