@@ -1,0 +1,14 @@
+{
+    "StudyEntries" : 
+    [
+        { 
+            "StudyInstanceUID": "2.4.804.1.2.6941575.1.968.2752567556652250046",
+            "Database": "DicomDb2",
+            "Series": []
+        }
+    ],    
+    "ID" : 101,
+    "ProfileID" : "ProfileTest1",
+    "RemoteDicomDestination" : null,
+    "StatusCallbackURI" : null
+}
