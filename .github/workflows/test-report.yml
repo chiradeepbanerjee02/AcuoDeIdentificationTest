@@ -56,6 +56,13 @@ jobs:
           Write-Host "Starting DeIdentification Tests..." -ForegroundColor Cyan
           ./RestDeIdTests.ps1
 
+      - name: Generate HTML Report
+        shell: pwsh
+        if: always()
+        run: |
+          Write-Host "Generating HTML Report..." -ForegroundColor Cyan
+          ./Generate-Report.ps1
+
       - name: Upload HTML Report
         uses: actions/upload-artifact@v4
         if: always()
