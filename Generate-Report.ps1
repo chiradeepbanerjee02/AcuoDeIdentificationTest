@@ -154,25 +154,72 @@ function Get-DeIdentificationLog {
             }
         }
         
-        # Get the second last line (most recent completion status)
-        $secondLastLine = $logLines[-2]
+        # Get the last 20 lines (or all lines if less than 20)
+        $linesToCheck = if ($logLines.Count -ge 20) { $logLines[-20..-1] } else { $logLines }
         $lastLine = $logLines[-1]
         
         $status = "Unknown"
         $details = ""
+        $successLineFound = $null
         
-        # Check for successful completion
-        if ($secondLastLine -match "Job ID: 100.*successful 1.*failed 0.*completionPercentage: 100%") {
-            $status = "Success"
-            $details = "DeIdentification processing completed successfully by placing the text file into inputwatch directory configured in the self hosted runner"
+        # Check for successful completion in the last 20 lines
+        foreach ($line in $linesToCheck) {
+            if ($line -match "Job ID: 100.*successful 1.*failed 0.*completionPercentage: 100%") {
+                $successLineFound = $line
+                break
+            }
         }
-        elseif ($secondLastLine -match "failed [1-9]") {
-            $status = "Failed"
-            $details = "DeIdentification processing had failures"
+        
+        # Check for folders inside C:\deidentification\output\DIR_OPTION
+        $outputPath = "C:\deidentification\output\DIR_OPTION"
+        $foldersExist = $false
+        $folderDetails = ""
+        
+        if (Test-Path $outputPath) {
+            $folders = @(Get-ChildItem -Path $outputPath -Directory -ErrorAction SilentlyContinue)
+            if ($folders.Count -gt 0) {
+                $foldersExist = $true
+                $folderDetails = "Found $($folders.Count) folder(s) in DIR_OPTION"
+                Write-ColoredOutput $folderDetails "SUCCESS"
+            } else {
+                $folderDetails = "No folders found in DIR_OPTION"
+                Write-ColoredOutput $folderDetails "WARNING"
+            }
+        } else {
+            $folderDetails = "DIR_OPTION path does not exist"
+            Write-ColoredOutput $folderDetails "WARNING"
+        }
+        
+        # Determine status based on both log and folder checks
+        if ($successLineFound -and $foldersExist) {
+            $status = "Success"
+            $details = "DeIdentification processing completed successfully by placing the text file into inputwatch directory configured in the self hosted runner. $folderDetails"
+        }
+        elseif ($successLineFound -and -not $foldersExist) {
+            $status = "Warning"
+            $details = "Success log entry found but $folderDetails"
+        }
+        elseif (-not $successLineFound -and $foldersExist) {
+            $status = "Warning"
+            $details = "Folders found in output but success log entry not found in last 20 lines. $folderDetails"
         }
         else {
-            $status = "In Progress"
-            $details = "Processing status unclear or still in progress"
+            # Check for failures in the last 20 lines
+            $failureFound = $false
+            foreach ($line in $linesToCheck) {
+                if ($line -match "failed [1-9]") {
+                    $failureFound = $true
+                    break
+                }
+            }
+            
+            if ($failureFound) {
+                $status = "Failed"
+                $details = "DeIdentification processing had failures"
+            } else {
+                $status = "In Progress"
+                $details = "Processing status unclear or still in progress. $folderDetails"
+            }
         }
         
         return @{
@@ -180,9 +227,11 @@ function Get-DeIdentificationLog {
             Status = $status
             Details = $details
             LogPath = $deidentifyLogPath
-            SecondLastLine = $secondLastLine
+            SuccessLine = $successLineFound
             LastLine = $lastLine
             TotalLines = $logLines.Count
+            FoldersExist = $foldersExist
+            FolderDetails = $folderDetails
         }
     }
     catch {
@@ -481,15 +530,22 @@ $(if ($DeIdentLog.Found) {
                         <div class='info-value'>$($DeIdentLog.LogPath)</div>
                         
                         <div class='info-label'>Total Log Lines:</div>
-                        <div class='info-value'>$($DeIdentLog.TotalLines)</div>"
+                        <div class='info-value'>$($DeIdentLog.TotalLines)</div>
+                        
+                        <div class='info-label'>Folders in DIR_OPTION:</div>
+                        <div class='info-value'>$($DeIdentLog.FolderDetails)</div>"
 })
                     </div>
-$(if ($DeIdentLog.Found -and $DeIdentLog.SecondLastLine) {
+$(if ($DeIdentLog.Found -and $DeIdentLog.SuccessLine) {
 "                    <div style='margin-top: 15px;'>
-                        <strong>Recent Log Entries:</strong>
-                        <div class='log-preview'>Second Last Line: $([System.Web.HttpUtility]::HtmlEncode($DeIdentLog.SecondLastLine))
-
-Last Line: $([System.Web.HttpUtility]::HtmlEncode($DeIdentLog.LastLine))</div>
+                        <strong>Success Log Entry Found:</strong>
+                        <div class='log-preview'>$([System.Web.HttpUtility]::HtmlEncode($DeIdentLog.SuccessLine))</div>
+                    </div>"
+})
+$(if ($DeIdentLog.Found -and $DeIdentLog.LastLine) {
+"                    <div style='margin-top: 15px;'>
+                        <strong>Last Log Entry:</strong>
+                        <div class='log-preview'>$([System.Web.HttpUtility]::HtmlEncode($DeIdentLog.LastLine))</div>
                     </div>"
 })
                 </div>
