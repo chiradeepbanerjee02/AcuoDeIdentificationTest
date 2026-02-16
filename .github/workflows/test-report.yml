@@ -13,10 +13,60 @@ jobs:
     permissions:
       contents: read
     
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Run Install-DeIdentification script
+     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install AcuoDeIdentification
+        shell: pwsh
         run: |
-          pwsh -File ./Install-DeIdentification.ps1
+          Write-Host "Installing AcuoDeIdentification..." -ForegroundColor Cyan
+
+          # Check if running as administrator
+          $currentPrincipal = [Security.Principal.WindowsPrincipal] `
+            [Security.Principal.WindowsIdentity]::GetCurrent()
+          $isAdmin = $currentPrincipal.IsInRole( `
+            [Security.Principal.WindowsBuiltInRole]::Administrator)
+
+          if (-not $isAdmin) {
+            Write-Host "ERROR: Requires administrator privileges" `
+              -ForegroundColor Red
+            Write-Host `
+              "Please configure the runner to run as administrator" `
+              -ForegroundColor Yellow
+            Write-Host `
+              "See: https://docs.github.com/actions" `
+              -ForegroundColor Yellow
+            exit 1
+          }
+
+          Write-Host "Running with administrator privileges" `
+            -ForegroundColor Green
+          & "$env:GITHUB_WORKSPACE\Install-AcuoDeIdentification.ps1"
+
+      - name: Execute Tests
+        shell: pwsh
+        run: |
+          Write-Host "Starting DeID Tests..." -ForegroundColor Cyan
+          ./Execute-RestDeIdTests.ps1
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rest-api-test-report
+          path: Reports.html
+          retention-days: 30
+
+      - name: Check Test Results
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path "Reports.html") {
+            Write-Host "✓ Reports.html generated successfully" `
+              -ForegroundColor Green
+          } else {
+            Write-Host "✗ Reports.html was not generated" `
+              -ForegroundColor Red
+            exit 1
+          }
