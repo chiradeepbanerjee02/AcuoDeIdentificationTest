@@ -426,7 +426,7 @@ function New-HtmlReport {
                     <div class="info-grid">
                         <div class="info-label">Status:</div>
                         <div class="info-value">
-                            <span class="status-badge status-$(($InstallLog.Status -replace '\s', '').ToLower())">$($InstallLog.Status)</span>
+                            <span class="status-badge status-$(($InstallLog.Status -replace ' ', '').ToLower())">$($InstallLog.Status)</span>
                         </div>
                         
                         <div class="info-label">Details:</div>
@@ -458,7 +458,7 @@ $(if ($InstallLog.Found) {
                     <div class="info-grid">
                         <div class="info-label">Status:</div>
                         <div class="info-value">
-                            <span class="status-badge status-$(($DeIdentLog.Status -replace '\s', '').ToLower())">$($DeIdentLog.Status)</span>
+                            <span class="status-badge status-$(($DeIdentLog.Status -replace ' ', '').ToLower())">$($DeIdentLog.Status)</span>
                         </div>
                         
                         <div class="info-label">Details:</div>
