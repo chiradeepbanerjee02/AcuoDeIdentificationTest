@@ -164,7 +164,7 @@ function Get-DeIdentificationLog {
         # Check for successful completion
         if ($secondLastLine -match "Job ID: 100.*successful 1.*failed 0.*completionPercentage: 100%") {
             $status = "Success"
-            $details = "DeIdentification processing completed successfully"
+            $details = "DeIdentification processing completed successfully by placing the text file into inputwatch directory configured in the self hosted runner"
         }
         elseif ($secondLastLine -match "failed [1-9]") {
             $status = "Failed"
