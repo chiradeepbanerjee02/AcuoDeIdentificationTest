@@ -48,7 +48,7 @@ jobs:
 
           Write-Host "Running with administrator privileges" `
             -ForegroundColor Green
-          & "$env:GITHUB_WORKSPACE\Install-AcuoDeIdentification.ps1"
+          & "$env:GITHUB_WORKSPACE\Install-DeIdentification.ps1"
 
       - name: Execute Deidentification Tests
         shell: pwsh
