@@ -336,6 +336,26 @@ function New-HtmlReport {
             color: #383d41;
         }
         
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-notfound {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .status-incomplete {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-inprogress {
+            background: #cfe2ff;
+            color: #084298;
+        }
+        
         .log-preview {
             background: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -406,7 +426,7 @@ function New-HtmlReport {
                     <div class="info-grid">
                         <div class="info-label">Status:</div>
                         <div class="info-value">
-                            <span class="status-badge status-$(($InstallLog.Status).ToLower())">$($InstallLog.Status)</span>
+                            <span class="status-badge status-$(($InstallLog.Status -replace '\s', '').ToLower())">$($InstallLog.Status)</span>
                         </div>
                         
                         <div class="info-label">Details:</div>
@@ -438,7 +458,7 @@ $(if ($InstallLog.Found) {
                     <div class="info-grid">
                         <div class="info-label">Status:</div>
                         <div class="info-value">
-                            <span class="status-badge status-$(($DeIdentLog.Status).ToLower())">$($DeIdentLog.Status)</span>
+                            <span class="status-badge status-$(($DeIdentLog.Status -replace '\s', '').ToLower())">$($DeIdentLog.Status)</span>
                         </div>
                         
                         <div class="info-label">Details:</div>
