@@ -6,7 +6,7 @@
 
 .DESCRIPTION
     This script generates a comprehensive HTML report (Reports.html) that includes:
-    1. Installation status from Install-DeIdentification.ps1 execution
+    1. Installation status by checking if the AcuoDeidentification Windows service is running
     2. Test execution results from RestDeIdTests.ps1
     3. DeIdentification log analysis
 
@@ -30,7 +30,6 @@ Add-Type -AssemblyName System.Web
 # Define paths
 $scriptDir = $PSScriptRoot
 $reportPath = Join-Path $scriptDir "Reports.html"
-$installLogDir = Join-Path $env:TEMP "AcuoDeIdentificationInstall"
 $deidentifyLogPath = "C:\Windows\tracing\DeidentifyLog\DeidentifyLog.txt"
 
 # Function to write colored output
@@ -52,73 +51,79 @@ function Write-ColoredOutput {
     }
 }
 
-# Function to get the most recent installation log
+# Function to get the installation status by checking Windows service
 function Get-InstallationLog {
-    Write-ColoredOutput "Searching for installation logs..." "INFO"
-    
-    if (-not (Test-Path $installLogDir)) {
-        Write-ColoredOutput "Installation log directory not found: $installLogDir" "WARNING"
-        return @{
-            Found = $false
-            Status = "Not Found"
-            Details = "Installation log directory does not exist"
-        }
-    }
-    
-    $logFiles = Get-ChildItem -Path $installLogDir -Filter "Install-AcuoDeIdentification-*.log" -ErrorAction SilentlyContinue |
-                Sort-Object LastWriteTime -Descending |
-                Select-Object -First 1
-    
-    if ($null -eq $logFiles) {
-        Write-ColoredOutput "No installation log files found" "WARNING"
-        return @{
-            Found = $false
-            Status = "Not Found"
-            Details = "No installation log files found in directory"
-        }
-    }
-    
-    Write-ColoredOutput "Found installation log: $($logFiles.FullName)" "SUCCESS"
+    Write-ColoredOutput "Checking AcuoDeidentification Windows service status..." "INFO"
     
     try {
-        $logContent = Get-Content -Path $logFiles.FullName -Raw
+        $service = Get-Service -Name "AcuoDeidentification" -ErrorAction SilentlyContinue
         
-        # Determine installation status from log
+        if ($null -eq $service) {
+            Write-ColoredOutput "AcuoDeidentification service not found" "WARNING"
+            return @{
+                Found = $false
+                Status = "Not Found"
+                Details = "AcuoDeidentification Windows service is not installed"
+            }
+        }
+        
+        Write-ColoredOutput "Found AcuoDeidentification service" "SUCCESS"
+        Write-ColoredOutput "Service Status: $($service.Status)" "INFO"
+        Write-ColoredOutput "Service StartType: $($service.StartType)" "INFO"
+        
+        # Determine installation status based on service status
         $status = "Unknown"
         $details = ""
         
-        if ($logContent -match "Installation script completed successfully") {
+        if ($service.Status -eq 'Running') {
             $status = "Success"
-            $details = "Installation completed successfully"
+            $details = "AcuoDeidentification service is running"
         }
-        elseif ($logContent -match "Installation script failed") {
+        elseif ($service.Status -eq 'Stopped') {
             $status = "Failed"
-            $details = "Installation failed - check log for details"
+            $details = "AcuoDeidentification service is installed but not running"
         }
-        elseif ($logContent -match "Installation completed with exit code: 0") {
-            $status = "Success"
-            $details = "Installation completed with exit code 0"
+        elseif ($service.Status -eq 'StartPending') {
+            $status = "Warning"
+            $details = "AcuoDeidentification service is starting"
+        }
+        elseif ($service.Status -eq 'StopPending') {
+            $status = "Warning"
+            $details = "AcuoDeidentification service is stopping"
+        }
+        elseif ($service.Status -eq 'Paused') {
+            $status = "Warning"
+            $details = "AcuoDeidentification service is paused"
+        }
+        elseif ($service.Status -eq 'PausePending') {
+            $status = "Warning"
+            $details = "AcuoDeidentification service is pausing"
+        }
+        elseif ($service.Status -eq 'ContinuePending') {
+            $status = "Warning"
+            $details = "AcuoDeidentification service is resuming"
         }
         else {
             $status = "Unknown"
-            $details = "Could not determine installation status from log"
+            $details = "AcuoDeidentification service is in $($service.Status) state"
         }
         
         return @{
             Found = $true
             Status = $status
             Details = $details
-            LogPath = $logFiles.FullName
-            LogContent = $logContent
-            Timestamp = $logFiles.LastWriteTime
+            ServiceName = $service.Name
+            ServiceStatus = $service.Status
+            ServiceStartType = $service.StartType
+            ServiceDisplayName = $service.DisplayName
         }
     }
     catch {
-        Write-ColoredOutput "Error reading installation log: $_" "ERROR"
+        Write-ColoredOutput "Error checking Windows service: $_" "ERROR"
         return @{
             Found = $false
             Status = "Error"
-            Details = "Failed to read installation log: $_"
+            Details = "Failed to check Windows service: $_"
         }
     }
 }
@@ -343,6 +348,26 @@ function New-HtmlReport {
             color: #383d41;
         }
         
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-notfound {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .status-incomplete {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-inprogress {
+            background: #cfe2ff;
+            color: #084298;
+        }
+        
         .log-preview {
             background: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -413,26 +438,26 @@ function New-HtmlReport {
                     <div class="info-grid">
                         <div class="info-label">Status:</div>
                         <div class="info-value">
-                            <span class="status-badge status-$(($InstallLog.Status).ToLower())">$($InstallLog.Status)</span>
+                            <span class="status-badge status-$(($InstallLog.Status -replace ' ', '').ToLower())">$($InstallLog.Status)</span>
                         </div>
                         
                         <div class="info-label">Details:</div>
                         <div class="info-value">$($InstallLog.Details)</div>
                         
 $(if ($InstallLog.Found) {
-"                        <div class='info-label'>Log File:</div>
-                        <div class='info-value'>$($InstallLog.LogPath)</div>
+"                        <div class='info-label'>Service Name:</div>
+                        <div class='info-value'>$($InstallLog.ServiceName)</div>
                         
-                        <div class='info-label'>Timestamp:</div>
-                        <div class='info-value'>$($InstallLog.Timestamp)</div>"
+                        <div class='info-label'>Service Status:</div>
+                        <div class='info-value'>$($InstallLog.ServiceStatus)</div>
+                        
+                        <div class='info-label'>Service Start Type:</div>
+                        <div class='info-value'>$($InstallLog.ServiceStartType)</div>
+                        
+                        <div class='info-label'>Display Name:</div>
+                        <div class='info-value'>$($InstallLog.ServiceDisplayName)</div>"
 })
                     </div>
-$(if ($InstallLog.Found -and $InstallLog.LogContent) {
-"                    <div style='margin-top: 15px;'>
-                        <strong>Installation Log Preview:</strong>
-                        <div class='log-preview'>$([System.Web.HttpUtility]::HtmlEncode($InstallLog.LogContent.Substring(0, [Math]::Min(2000, $InstallLog.LogContent.Length))))</div>
-                    </div>"
-})
                 </div>
             </div>
             
@@ -445,7 +470,7 @@ $(if ($InstallLog.Found -and $InstallLog.LogContent) {
                     <div class="info-grid">
                         <div class="info-label">Status:</div>
                         <div class="info-value">
-                            <span class="status-badge status-$(($DeIdentLog.Status).ToLower())">$($DeIdentLog.Status)</span>
+                            <span class="status-badge status-$(($DeIdentLog.Status -replace ' ', '').ToLower())">$($DeIdentLog.Status)</span>
                         </div>
                         
                         <div class="info-label">Details:</div>
