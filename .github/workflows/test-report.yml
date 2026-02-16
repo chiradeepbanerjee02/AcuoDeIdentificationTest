@@ -19,4 +19,4 @@ jobs:
       
       - name: Run Install-DeIdentification script
         run: |
-          pwsh -File Install-DeIdentification.ps1
+          pwsh -File ./Install-DeIdentification.ps1
