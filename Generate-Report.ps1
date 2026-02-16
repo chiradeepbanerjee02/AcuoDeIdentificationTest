@@ -31,6 +31,11 @@ Add-Type -AssemblyName System.Web
 $scriptDir = $PSScriptRoot
 $reportPath = Join-Path $scriptDir "Reports.html"
 $deidentifyLogPath = "C:\Windows\tracing\DeidentifyLog\DeidentifyLog.txt"
+$outputDirPath = "C:\deidentification\output\DIR_OPTION"
+
+# Define validation patterns
+$successPattern = "Job ID: 100.*successful 1.*failed 0.*completionPercentage: 100%"
+$failurePattern = "failed [1-9]\d*"
 
 # Function to write colored output
 function Write-ColoredOutput {
@@ -164,19 +169,18 @@ function Get-DeIdentificationLog {
         
         # Check for successful completion in the last 20 lines
         foreach ($line in $linesToCheck) {
-            if ($line -match "Job ID: 100.*successful 1.*failed 0.*completionPercentage: 100%") {
+            if ($line -match $successPattern) {
                 $successLineFound = $line
                 break
             }
         }
         
         # Check for folders inside C:\deidentification\output\DIR_OPTION
-        $outputPath = "C:\deidentification\output\DIR_OPTION"
         $foldersExist = $false
         $folderDetails = ""
         
-        if (Test-Path $outputPath) {
-            $folders = @(Get-ChildItem -Path $outputPath -Directory -ErrorAction SilentlyContinue)
+        if (Test-Path $outputDirPath) {
+            $folders = @(Get-ChildItem -Path $outputDirPath -Directory -ErrorAction SilentlyContinue)
             if ($folders.Count -gt 0) {
                 $foldersExist = $true
                 $folderDetails = "Found $($folders.Count) folder(s) in DIR_OPTION"
@@ -207,7 +211,7 @@ function Get-DeIdentificationLog {
             # Check for failures in the last 20 lines
             $failureFound = $false
             foreach ($line in $linesToCheck) {
-                if ($line -match "failed [1-9]") {
+                if ($line -match $failurePattern) {
                     $failureFound = $true
                     break
                 }
