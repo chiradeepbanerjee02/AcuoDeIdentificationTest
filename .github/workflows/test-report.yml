@@ -2,9 +2,9 @@ name: Test Report Generation
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main1, master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main1, master ]
   workflow_dispatch:
 
 jobs:
@@ -132,7 +132,7 @@ jobs:
           </head>
           <body>
               <div class="container">
-                  <h1>🧪 Test Report - Acuo DeIdentification</h1>
+                  <h1>Test Report - Acuo DeIdentification</h1>
                   
                   <div class="summary">
                       <div class="summary-box total">
