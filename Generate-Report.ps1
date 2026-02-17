@@ -36,6 +36,7 @@ $outputDirPath = "C:\deidentification\output\DIR_OPTION"
 # Define validation patterns
 $successPattern = "Job ID: 100.*successful 1.*failed 0.*completionPercentage: 100%"
 $failurePattern = "failed [1-9]\d*"
+$restApiSuccessPattern = "Job ID: 75.*successful 1.*failed 0.*completionPercentage: 100%"
 
 # Function to write colored output
 function Write-ColoredOutput {
@@ -248,11 +249,98 @@ function Get-DeIdentificationLog {
     }
 }
 
+# Function to analyze REST API test log
+function Get-RestApiTestLog {
+    Write-ColoredOutput "Analyzing REST API test log..." "INFO"
+    
+    if (-not (Test-Path $deidentifyLogPath)) {
+        Write-ColoredOutput "DeIdentification log not found: $deidentifyLogPath" "WARNING"
+        return @{
+            Found = $false
+            Status = "Not Found"
+            Details = "DeIdentification log file does not exist"
+        }
+    }
+    
+    try {
+        $logLines = @(Get-Content -Path $deidentifyLogPath -Tail 50)
+        
+        if ($logLines.Count -lt 2) {
+            return @{
+                Found = $true
+                Status = "Incomplete"
+                Details = "Log file has insufficient entries"
+                LogPath = $deidentifyLogPath
+                RecentEntries = $logLines
+            }
+        }
+        
+        # Get the last 20 lines (or all lines if less than 20)
+        $linesToCheck = if ($logLines.Count -ge 20) { $logLines[-20..-1] } else { $logLines }
+        $lastLine = $logLines[-1]
+        
+        $status = "Unknown"
+        $details = ""
+        $successLineFound = $null
+        
+        # Check for successful completion in the last 20 lines
+        foreach ($line in $linesToCheck) {
+            if ($line -match $restApiSuccessPattern) {
+                $successLineFound = $line
+                break
+            }
+        }
+        
+        # Determine status based on log check
+        if ($successLineFound) {
+            $status = "Success"
+            $details = "REST API call completed successfully with Job ID 75"
+        }
+        else {
+            # Check for failures in the last 20 lines
+            $failureFound = $false
+            foreach ($line in $linesToCheck) {
+                if ($line -match $failurePattern) {
+                    $failureFound = $true
+                    break
+                }
+            }
+            
+            if ($failureFound) {
+                $status = "Failed"
+                $details = "REST API call had failures"
+            } else {
+                $status = "In Progress"
+                $details = "REST API call status unclear or still in progress"
+            }
+        }
+        
+        return @{
+            Found = $true
+            Status = $status
+            Details = $details
+            LogPath = $deidentifyLogPath
+            SuccessLine = $successLineFound
+            LastLine = $lastLine
+            TotalLines = $logLines.Count
+        }
+    }
+    catch {
+        Write-ColoredOutput "Error reading REST API test log: $_" "ERROR"
+        return @{
+            Found = $false
+            Status = "Error"
+            Details = "Failed to read REST API test log: $_"
+        }
+    }
+}
+
 # Function to generate HTML report
 function New-HtmlReport {
     param(
         [hashtable]$InstallLog,
-        [hashtable]$DeIdentLog
+        [hashtable]$DeIdentLog,
+        [hashtable]$RestApiLog
     )
     
     Write-ColoredOutput "Generating HTML report..." "INFO"
@@ -261,12 +349,12 @@ function New-HtmlReport {
     $overallStatus = "Unknown"
     
     # Determine overall status
-    if ($InstallLog.Status -eq "Success" -and $DeIdentLog.Status -eq "Success") {
+    if ($InstallLog.Status -eq "Success" -and $DeIdentLog.Status -eq "Success" -and $RestApiLog.Status -eq "Success") {
         $overallStatus = "PASSED"
         $statusColor = "#28a745"
         $statusIcon = "✓"
     }
-    elseif ($InstallLog.Status -eq "Failed" -or $DeIdentLog.Status -eq "Failed") {
+    elseif ($InstallLog.Status -eq "Failed" -or $DeIdentLog.Status -eq "Failed" -or $RestApiLog.Status -eq "Failed") {
         $overallStatus = "FAILED"
         $statusColor = "#dc3545"
         $statusIcon = "✗"
@@ -555,14 +643,58 @@ $(if ($DeIdentLog.Found -and $DeIdentLog.LastLine) {
                 </div>
             </div>
             
+            <!-- Rest API call test Section -->
+            <div class="section">
+                <div class="section-header">
+                    Rest API call test
+                </div>
+                <div class="section-body">
+                    <div class="info-grid">
+                        <div class="info-label">Status:</div>
+                        <div class="info-value">
+                            <span class="status-badge status-$(($RestApiLog.Status -replace ' ', '').ToLower())">$($RestApiLog.Status)</span>
+                        </div>
+                        
+                        <div class="info-label">Details:</div>
+                        <div class="info-value">$($RestApiLog.Details)</div>
+                        
+$(if ($RestApiLog.Found) {
+"                        <div class='info-label'>Log File:</div>
+                        <div class='info-value'>$($RestApiLog.LogPath)</div>
+                        
+                        <div class='info-label'>Total Log Lines:</div>
+                        <div class='info-value'>$($RestApiLog.TotalLines)</div>"
+})
+                    </div>
+$(if ($RestApiLog.Found -and $RestApiLog.SuccessLine) {
+"                    <div style='margin-top: 15px;'>
+                        <strong>Success Log Entry Found:</strong>
+                        <div class='log-preview'>$([System.Web.HttpUtility]::HtmlEncode($RestApiLog.SuccessLine))</div>
+                    </div>"
+})
+$(if ($RestApiLog.Found -and $RestApiLog.LastLine) {
+"                    <div style='margin-top: 15px;'>
+                        <strong>Last Log Entry:</strong>
+                        <div class='log-preview'>$([System.Web.HttpUtility]::HtmlEncode($RestApiLog.LastLine))</div>
+                    </div>"
+})
+                </div>
+            </div>
+            
             <!-- Summary Statistics -->
             <div class="summary-stats">
                 <div class="stat-item">
-                    <div class="stat-value">2</div>
+                    <div class="stat-value">3</div>
                     <div class="stat-label">Test Phases</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">$(if ($InstallLog.Status -eq 'Success' -and $DeIdentLog.Status -eq 'Success') { '100%' } elseif ($InstallLog.Status -eq 'Success' -or $DeIdentLog.Status -eq 'Success') { '50%' } else { '0%' })</div>
+                    <div class="stat-value">$(
+                        $successCount = 0
+                        if ($InstallLog.Status -eq 'Success') { $successCount++ }
+                        if ($DeIdentLog.Status -eq 'Success') { $successCount++ }
+                        if ($RestApiLog.Status -eq 'Success') { $successCount++ }
+                        [math]::Round(($successCount / 3) * 100, 0).ToString() + '%'
+                    )</div>
                     <div class="stat-label">Success Rate</div>
                 </div>
                 <div class="stat-item">
@@ -606,12 +738,16 @@ try {
     $installLog = Get-InstallationLog
     
     # Step 2: Get DeIdentification log
-    Write-Host "`n[Step 2/3] Analyzing DeIdentification logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 2/4] Analyzing DeIdentification logs..." -ForegroundColor Cyan
     $deidentLog = Get-DeIdentificationLog
     
-    # Step 3: Generate HTML report
-    Write-Host "`n[Step 3/3] Generating HTML report..." -ForegroundColor Cyan
-    $success = New-HtmlReport -InstallLog $installLog -DeIdentLog $deidentLog
+    # Step 3: Get REST API test log
+    Write-Host "`n[Step 3/4] Analyzing REST API test logs..." -ForegroundColor Cyan
+    $restApiLog = Get-RestApiTestLog
+    
+    # Step 4: Generate HTML report
+    Write-Host "`n[Step 4/4] Generating HTML report..." -ForegroundColor Cyan
+    $success = New-HtmlReport -InstallLog $installLog -DeIdentLog $deidentLog -RestApiLog $restApiLog
     
     if ($success) {
         Write-Host "`n========================================" -ForegroundColor Green
