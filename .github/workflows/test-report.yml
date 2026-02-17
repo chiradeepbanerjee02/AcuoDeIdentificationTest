@@ -50,6 +50,12 @@ jobs:
             -ForegroundColor Green
           & "$env:GITHUB_WORKSPACE\Install-DeIdentification.ps1"
 
+      - name: Run Pre-Requisites
+        shell: pwsh
+        run: |
+          Write-Host "Running Pre-Requisites..." -ForegroundColor Cyan
+          ./PreRequisites.ps1
+
       - name: Execute Deidentification Tests
         shell: pwsh
         run: |
