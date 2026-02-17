@@ -36,7 +36,7 @@ $outputDirPath = "C:\deidentification\output\DIR_OPTION"
 # Define validation patterns
 $successPattern = "Job ID: 100.*successful 1.*failed 0.*completionPercentage: 100%"
 $failurePattern = "failed [1-9]\d*"
-$restApiSuccessPattern = "Job ID: 75.*successful 1.*failed 0.*completionPercentage: 100%"
+$restApiSuccessPattern = "Job ID: 101.*successful 1.*failed 0.*completionPercentage: 100%"
 
 # Function to write colored output
 function Write-ColoredOutput {
@@ -294,7 +294,7 @@ function Get-RestApiTestLog {
         # Determine status based on log check
         if ($successLineFound) {
             $status = "Success"
-            $details = "REST API call completed successfully with Job ID 75"
+            $details = "REST API call completed successfully with Job ID 101"
         }
         else {
             # Check for failures in the last 20 lines
@@ -605,7 +605,7 @@ $(if ($InstallLog.Found) {
             <!-- DeIdentification Test Section -->
             <div class="section">
                 <div class="section-header">
-                    DeIdentification Test Results
+                    Inputwatch Test Results
                 </div>
                 <div class="section-body">
                     <div class="info-grid">

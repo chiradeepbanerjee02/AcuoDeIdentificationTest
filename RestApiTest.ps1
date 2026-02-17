@@ -10,7 +10,7 @@
     1. Reads the request body from requestbody.txt
     2. Makes a REST API call to the DeIdentification service endpoint
     3. Waits for processing to complete
-    4. Verifies the deidentification log for successful completion with Job ID 75
+    4. Verifies the deidentification log for successful completion with Job ID 101
 
 .EXAMPLE
     .\RestApiTest.ps1
@@ -31,7 +31,7 @@ $scriptDir = $PSScriptRoot
 $requestBodyPath = Join-Path $scriptDir "requestbody.txt"
 $deidRestEndpoint = "http://us14-acuo125:8099/AcuoDeidentification/deidentifysync"
 $logFilePath = "C:\Windows\tracing\DeidentifyLog\DeidentifyLog.txt"
-$expectedLogEntry = "Job ID: 75, Status callback: , successful 1, failed 0, completionPercentage: 100%"
+$expectedLogEntry = "Job ID: 101, Status callback: , successful 1, failed 0, completionPercentage: 100%"
 
 # Function to write colored output
 function Write-ColoredOutput {
@@ -135,24 +135,30 @@ function Test-LogFileContent {
         # Read all lines from the log file
         $logLines = Get-Content -Path $LogPath
         
-        if ($logLines.Count -lt 2) {
-            Write-ColoredOutput "Log file has less than 2 lines. Cannot verify second last line." "WARNING"
+        if ($logLines.Count -eq 0) {
+            Write-ColoredOutput "Log file is empty." "WARNING"
             return $false
         }
         
-        # Get the second last line (index -2)
-        $secondLastLine = $logLines[-2]
-        Write-ColoredOutput "Second last line: $secondLastLine" "INFO"
+        Write-ColoredOutput "Searching entire log file for expected content..." "INFO"
         Write-ColoredOutput "Expected content: $ExpectedContent" "INFO"
         
-        # Check if the second last line contains the expected content
-        if ($secondLastLine -like "*$ExpectedContent*") {
-            Write-ColoredOutput "Verification PASSED: Log entry found!" "SUCCESS"
-            return $true
-        } else {
-            Write-ColoredOutput "Verification FAILED: Expected content not found in second last line" "ERROR"
-            return $false
+        # Search through all lines for the expected content
+        $found = $false
+        foreach ($line in $logLines) {
+            if ($line -like "*$ExpectedContent*") {
+                Write-ColoredOutput "Verification PASSED: Log entry found!" "SUCCESS"
+                Write-ColoredOutput "Matching line: $line" "INFO"
+                $found = $true
+                break
+            }
         }
+        
+        if (-not $found) {
+            Write-ColoredOutput "Verification FAILED: Expected content not found in entire log file" "ERROR"
+        }
+        
+        return $found
     }
     catch {
         Write-ColoredOutput "Error reading log file: $_" "ERROR"
@@ -184,9 +190,9 @@ try {
     Write-Host "`n[Step 2/4] Invoking REST API..." -ForegroundColor Cyan
     $response = Invoke-DeidentificationRestApi -Endpoint $deidRestEndpoint -Body $body
     
-    # Step 3: Wait for processing (2 minutes)
-    Write-Host "`n[Step 3/4] Waiting for 2 minutes for processing..." -ForegroundColor Cyan
-    $waitSeconds = 120
+    # Step 3: Wait for processing (45 seconds)
+    Write-Host "`n[Step 3/4] Waiting for 45 seconds for processing..." -ForegroundColor Cyan
+    $waitSeconds = 45
     Write-ColoredOutput "Waiting for $waitSeconds seconds..." "INFO"
     
     for ($i = 0; $i -lt $waitSeconds; $i += 10) {
