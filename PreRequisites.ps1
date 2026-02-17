@@ -8,8 +8,9 @@
 .DESCRIPTION
     This script performs the following pre-requisite operations before running tests:
     1. Force deletes all subdirectories and files inside "C:\deidentification\output\DIR_OPTION"
-    2. Stops the "AcuoDeidentification" Windows service
-    3. Clears all contents of "Deidentify.txt" present in "C:\Windows\tracing\DeidentifyLog"
+    2. Force deletes all files inside "C:\deidentification\inputwatch"
+    3. Restarts the "AcuoDeidentification" Windows service
+    4. Clears all contents of "Deidentify.txt" present in "C:\Windows\tracing\DeidentifyLog"
 
 .EXAMPLE
     .\PreRequisites.ps1
@@ -27,6 +28,7 @@ $ErrorActionPreference = "Stop"
 
 # Define paths
 $outputDirPath = "C:\deidentification\output\DIR_OPTION"
+$inputWatchPath = "C:\deidentification\inputwatch"
 $deidentifyLogPath = "C:\Windows\tracing\DeidentifyLog\Deidentify.txt"
 $serviceName = "AcuoDeidentification"
 
@@ -108,11 +110,63 @@ function Remove-OutputDirectory {
     }
 }
 
-# Function to stop the AcuoDeidentification service
-function Stop-AcuoDeidentificationService {
+# Function to force delete all files in inputwatch directory
+function Remove-InputWatchDirectory {
+    param([string]$Path)
+    
+    Write-ColoredOutput "Cleaning inputwatch directory..." "INFO"
+    Write-ColoredOutput "Target path: $Path" "INFO"
+    
+    if (-not (Test-Path $Path)) {
+        Write-ColoredOutput "Directory does not exist: $Path" "WARNING"
+        Write-ColoredOutput "Creating directory for future use..." "INFO"
+        try {
+            New-Item -Path $Path -ItemType Directory -Force | Out-Null
+            Write-ColoredOutput "Directory created successfully" "SUCCESS"
+        }
+        catch {
+            Write-ColoredOutput "Failed to create directory: $_" "ERROR"
+            throw
+        }
+        return
+    }
+    
+    try {
+        # Get all items (files only) in the target directory
+        $items = Get-ChildItem -Path $Path -File -Force -ErrorAction SilentlyContinue
+        
+        if ($items.Count -eq 0) {
+            Write-ColoredOutput "Directory is already empty" "SUCCESS"
+            return
+        }
+        
+        Write-ColoredOutput "Found $($items.Count) file(s) to delete" "INFO"
+        
+        # Force delete all files
+        Remove-Item -Path "$Path\*" -Force -ErrorAction Stop
+        
+        Write-ColoredOutput "Successfully deleted all files" "SUCCESS"
+        
+        # Verify deletion
+        $remainingItems = Get-ChildItem -Path $Path -File -Force -ErrorAction SilentlyContinue
+        if ($remainingItems.Count -eq 0) {
+            Write-ColoredOutput "Verification: Directory is now clean" "SUCCESS"
+        }
+        else {
+            Write-ColoredOutput "Warning: $($remainingItems.Count) file(s) still remain" "WARNING"
+        }
+    }
+    catch {
+        Write-ColoredOutput "Error deleting files: $_" "ERROR"
+        throw
+    }
+}
+
+# Function to restart the AcuoDeidentification service
+function Restart-AcuoDeidentificationService {
     param([string]$ServiceName)
     
-    Write-ColoredOutput "Stopping $ServiceName service..." "INFO"
+    Write-ColoredOutput "Restarting $ServiceName service..." "INFO"
     
     try {
         $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
@@ -122,19 +176,14 @@ function Stop-AcuoDeidentificationService {
             return
         }
         
-        Write-ColoredOutput "Service status: $($service.Status)" "INFO"
+        Write-ColoredOutput "Current service status: $($service.Status)" "INFO"
         
-        if ($service.Status -eq 'Stopped') {
-            Write-ColoredOutput "$ServiceName service is already stopped" "SUCCESS"
-            return
-        }
-        
+        # Stop the service if it's running
         if ($service.Status -eq 'Running' -or $service.Status -eq 'StartPending' -or $service.Status -eq 'Paused') {
             Write-ColoredOutput "Stopping $ServiceName service..." "INFO"
-            # Force flag will handle paused services by stopping them directly
             Stop-Service -Name $ServiceName -Force -ErrorAction Stop
             
-            # Wait for service to stop with timeout (30 seconds should be sufficient for graceful shutdown)
+            # Wait for service to stop with timeout
             $timeout = 30
             $elapsed = 0
             while ($elapsed -lt $timeout) {
@@ -149,14 +198,52 @@ function Stop-AcuoDeidentificationService {
                 
                 if ($service.Status -eq 'Stopped') {
                     Write-ColoredOutput "$ServiceName service stopped successfully!" "SUCCESS"
+                    break
+                }
+            }
+            
+            # Check if service stopped
+            $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+            if ($null -ne $service -and $service.Status -ne 'Stopped') {
+                Write-ColoredOutput "Service did not stop within $timeout seconds. Current status: $($service.Status)" "WARNING"
+            }
+        }
+        
+        # Start the service
+        $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        if ($null -eq $service) {
+            Write-ColoredOutput "$ServiceName service was removed" "WARNING"
+            return
+        }
+        
+        if ($service.Status -eq 'Stopped') {
+            Write-ColoredOutput "Starting $ServiceName service..." "INFO"
+            Start-Service -Name $ServiceName -ErrorAction Stop
+            
+            # Wait for service to start with timeout
+            $timeout = 30
+            $elapsed = 0
+            while ($elapsed -lt $timeout) {
+                Start-Sleep -Seconds 2
+                $elapsed += 2
+                
+                $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+                if ($null -eq $service) {
+                    Write-ColoredOutput "$ServiceName service was removed" "WARNING"
+                    return
+                }
+                
+                if ($service.Status -eq 'Running') {
+                    Write-ColoredOutput "$ServiceName service started successfully!" "SUCCESS"
+                    Write-ColoredOutput "$ServiceName service restarted successfully!" "SUCCESS"
                     return
                 }
             }
             
-            # If we get here, service didn't stop within timeout
+            # If we get here, service didn't start within timeout
             $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
             if ($null -ne $service) {
-                Write-ColoredOutput "Service did not stop within $timeout seconds. Current status: $($service.Status)" "WARNING"
+                Write-ColoredOutput "Service did not start within $timeout seconds. Current status: $($service.Status)" "WARNING"
             }
         }
         else {
@@ -164,7 +251,7 @@ function Stop-AcuoDeidentificationService {
         }
     }
     catch {
-        Write-ColoredOutput "Error stopping $ServiceName service: $_" "ERROR"
+        Write-ColoredOutput "Error restarting $ServiceName service: $_" "ERROR"
         throw
     }
 }
@@ -240,15 +327,19 @@ try {
     Write-ColoredOutput "Administrator privileges verified" "SUCCESS"
     
     # Step 1: Force delete subdirectories and files in DIR_OPTION
-    Write-Host "`n[Step 1/3] Cleaning DIR_OPTION directory..." -ForegroundColor Cyan
+    Write-Host "`n[Step 1/4] Cleaning DIR_OPTION directory..." -ForegroundColor Cyan
     Remove-OutputDirectory -Path $outputDirPath
     
-    # Step 2: Stop the AcuoDeidentification service
-    Write-Host "`n[Step 2/3] Stopping AcuoDeidentification service..." -ForegroundColor Cyan
-    Stop-AcuoDeidentificationService -ServiceName $serviceName
+    # Step 2: Force delete all files in inputwatch directory
+    Write-Host "`n[Step 2/4] Cleaning inputwatch directory..." -ForegroundColor Cyan
+    Remove-InputWatchDirectory -Path $inputWatchPath
     
-    # Step 3: Clear Deidentify.txt log file
-    Write-Host "`n[Step 3/3] Clearing Deidentify.txt log file..." -ForegroundColor Cyan
+    # Step 3: Restart the AcuoDeidentification service
+    Write-Host "`n[Step 3/4] Restarting AcuoDeidentification service..." -ForegroundColor Cyan
+    Restart-AcuoDeidentificationService -ServiceName $serviceName
+    
+    # Step 4: Clear Deidentify.txt log file
+    Write-Host "`n[Step 4/4] Clearing Deidentify.txt log file..." -ForegroundColor Cyan
     Clear-DeidentifyLog -LogPath $deidentifyLogPath
     
     # Final summary
