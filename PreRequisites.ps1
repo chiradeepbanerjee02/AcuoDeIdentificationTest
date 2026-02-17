@@ -234,7 +234,6 @@ function Restart-AcuoDeidentificationService {
                 }
                 
                 if ($service.Status -eq 'Running') {
-                    Write-ColoredOutput "$ServiceName service started successfully!" "SUCCESS"
                     Write-ColoredOutput "$ServiceName service restarted successfully!" "SUCCESS"
                     return
                 }
