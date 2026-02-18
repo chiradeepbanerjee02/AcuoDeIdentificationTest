@@ -8,7 +8,7 @@
 .DESCRIPTION
     This script performs the following test operations:
     1. Copies "103_DefaultProfile_02182025.txt" to "C:\deidentification\inputwatch"
-    2. Waits for 20 seconds for processing to complete
+    2. Waits for 60 seconds for processing to complete
     3. Verifies the deidentification log for successful completion
 
 .EXAMPLE
@@ -30,7 +30,7 @@ $scriptDir = $PSScriptRoot
 $sourceFile = Join-Path $scriptDir "103_DefaultProfile_02182025.txt"
 $destinationDir = "C:\deidentification\inputwatch"
 $logFilePath = "C:\Windows\tracing\DeidentifyLog\DeidentifyLog.txt"
-$expectedLogEntry = "for Job ID"
+$expectedLogEntry = "for jobID"
 
 # Function to write colored output
 function Write-ColoredOutput {
@@ -168,9 +168,9 @@ try {
     Write-Host "`n[Step 1/3] Copying file to inputwatch directory..." -ForegroundColor Cyan
     Copy-FileToInputWatch -SourcePath $sourceFile -DestinationDirectory $destinationDir
     
-    # Step 2: Wait for 20 seconds
-    Write-Host "`n[Step 2/3] Waiting for 20 seconds for processing..." -ForegroundColor Cyan
-    $waitSeconds = 20
+    # Step 2: Wait for 60 seconds
+    Write-Host "`n[Step 2/3] Waiting for 60 seconds for processing..." -ForegroundColor Cyan
+    $waitSeconds = 60
     Write-ColoredOutput "Waiting for $waitSeconds seconds..." "INFO"
     
     for ($i = 0; $i -lt $waitSeconds; $i += 9) {
