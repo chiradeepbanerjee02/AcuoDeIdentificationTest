@@ -150,7 +150,7 @@ function Get-DeIdentificationLog {
     }
     
     try {
-        $logLines = @(Get-Content -Path $deidentifyLogPath -Tail 50)
+        $logLines = @(Get-Content -Path $deidentifyLogPath)
         
         if ($logLines.Count -lt 2) {
             return @{
@@ -162,16 +162,14 @@ function Get-DeIdentificationLog {
             }
         }
         
-        # Get the last 20 lines (or all lines if less than 20)
-        $linesToCheck = if ($logLines.Count -ge 20) { $logLines[-20..-1] } else { $logLines }
         $lastLine = $logLines[-1]
         
         $status = "Unknown"
         $details = ""
         $successLineFound = $null
         
-        # Check for successful completion in the last 20 lines
-        foreach ($line in $linesToCheck) {
+        # Check for successful completion in the entire log file
+        foreach ($line in $logLines) {
             if ($line -match $successPattern) {
                 $successLineFound = $line
                 break
@@ -208,12 +206,12 @@ function Get-DeIdentificationLog {
         }
         elseif (-not $successLineFound -and $foldersExist) {
             $status = "Warning"
-            $details = "Folders found in output but success log entry not found in last 20 lines. $folderDetails"
+            $details = "Folders found in output but success log entry not found in entire log file. $folderDetails"
         }
         else {
-            # Check for failures in the last 20 lines
+            # Check for failures in the entire log file
             $failureFound = $false
-            foreach ($line in $linesToCheck) {
+            foreach ($line in $logLines) {
                 if ($line -match $failurePattern) {
                     $failureFound = $true
                     break
@@ -265,7 +263,7 @@ function Get-RestApiTestLog {
     }
     
     try {
-        $logLines = @(Get-Content -Path $deidentifyLogPath -Tail 50)
+        $logLines = @(Get-Content -Path $deidentifyLogPath)
         
         if ($logLines.Count -lt 2) {
             return @{
@@ -277,16 +275,14 @@ function Get-RestApiTestLog {
             }
         }
         
-        # Get the last 20 lines (or all lines if less than 20)
-        $linesToCheck = if ($logLines.Count -ge 20) { $logLines[-20..-1] } else { $logLines }
         $lastLine = $logLines[-1]
         
         $status = "Unknown"
         $details = ""
         $successLineFound = $null
         
-        # Check for successful completion in the last 20 lines
-        foreach ($line in $linesToCheck) {
+        # Check for successful completion in the entire log file
+        foreach ($line in $logLines) {
             if ($line -match $restApiSuccessPattern) {
                 $successLineFound = $line
                 break
@@ -299,9 +295,9 @@ function Get-RestApiTestLog {
             $details = "REST API call completed successfully with Job ID 101"
         }
         else {
-            # Check for failures in the last 20 lines
+            # Check for failures in the entire log file
             $failureFound = $false
-            foreach ($line in $linesToCheck) {
+            foreach ($line in $logLines) {
                 if ($line -match $failurePattern) {
                     $failureFound = $true
                     break
@@ -351,7 +347,7 @@ function Get-AccblkTestLog {
     }
     
     try {
-        $logLines = @(Get-Content -Path $deidentifyLogPath -Tail 50)
+        $logLines = @(Get-Content -Path $deidentifyLogPath)
         
         if ($logLines.Count -lt 2) {
             return @{
@@ -363,16 +359,14 @@ function Get-AccblkTestLog {
             }
         }
         
-        # Get the last 20 lines (or all lines if less than 20)
-        $linesToCheck = if ($logLines.Count -ge 20) { $logLines[-20..-1] } else { $logLines }
         $lastLine = $logLines[-1]
         
         $status = "Unknown"
         $details = ""
         $successLineFound = $null
         
-        # Check for successful completion in the last 20 lines
-        foreach ($line in $linesToCheck) {
+        # Check for successful completion in the entire log file
+        foreach ($line in $logLines) {
             if ($line -match $accblkSuccessPattern) {
                 $successLineFound = $line
                 break
@@ -385,9 +379,9 @@ function Get-AccblkTestLog {
             $details = "ACCBLK test completed successfully with Job ID 102"
         }
         else {
-            # Check for failures in the last 20 lines
+            # Check for failures in the entire log file
             $failureFound = $false
-            foreach ($line in $linesToCheck) {
+            foreach ($line in $logLines) {
                 if ($line -match $failurePattern) {
                     $failureFound = $true
                     break
@@ -437,7 +431,7 @@ function Get-MrnblkTestLog {
     }
     
     try {
-        $logLines = @(Get-Content -Path $deidentifyLogPath -Tail 50)
+        $logLines = @(Get-Content -Path $deidentifyLogPath)
         
         if ($logLines.Count -lt 1) {
             return @{
@@ -449,16 +443,14 @@ function Get-MrnblkTestLog {
             }
         }
         
-        # Get the last 20 lines (or all lines if less than 20)
-        $linesToCheck = if ($logLines.Count -ge 20) { $logLines[-20..-1] } else { $logLines }
         $lastLine = $logLines[-1]
         
         $status = "Unknown"
         $details = ""
         $successLineFound = $null
         
-        # Check for successful completion in the last 20 lines
-        foreach ($line in $linesToCheck) {
+        # Check for successful completion in the entire log file
+        foreach ($line in $logLines) {
             if ($line -match $mrnblkSuccessPattern) {
                 $successLineFound = $line
                 break
@@ -471,9 +463,9 @@ function Get-MrnblkTestLog {
             $details = "MRNBLK test completed successfully with Job ID 103"
         }
         else {
-            # Check for failures in the last 20 lines
+            # Check for failures in the entire log file
             $failureFound = $false
-            foreach ($line in $linesToCheck) {
+            foreach ($line in $logLines) {
                 if ($line -match $failurePattern) {
                     $failureFound = $true
                     break
