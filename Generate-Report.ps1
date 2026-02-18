@@ -37,6 +37,7 @@ $outputDirPath = "C:\deidentification\output\DIR_OPTION"
 $successPattern = "Job ID: 100.*successful 1.*failed 0.*completionPercentage: 100%"
 $failurePattern = "failed [1-9]\d*"
 $restApiSuccessPattern = "Job ID: 101.*successful 1.*failed 0.*completionPercentage: 100%"
+$accblkSuccessPattern = "Job ID: 102.*successful 1.*failed 0.*completionPercentage: 100%"
 
 # Function to write colored output
 function Write-ColoredOutput {
@@ -335,12 +336,99 @@ function Get-RestApiTestLog {
     }
 }
 
+# Function to analyze ACCBLK test log
+function Get-AccblkTestLog {
+    Write-ColoredOutput "Analyzing ACCBLK test log..." "INFO"
+    
+    if (-not (Test-Path $deidentifyLogPath)) {
+        Write-ColoredOutput "DeIdentification log not found: $deidentifyLogPath" "WARNING"
+        return @{
+            Found = $false
+            Status = "Not Found"
+            Details = "DeIdentification log file does not exist"
+        }
+    }
+    
+    try {
+        $logLines = @(Get-Content -Path $deidentifyLogPath -Tail 50)
+        
+        if ($logLines.Count -lt 2) {
+            return @{
+                Found = $true
+                Status = "Incomplete"
+                Details = "Log file has insufficient entries"
+                LogPath = $deidentifyLogPath
+                RecentEntries = $logLines
+            }
+        }
+        
+        # Get the last 20 lines (or all lines if less than 20)
+        $linesToCheck = if ($logLines.Count -ge 20) { $logLines[-20..-1] } else { $logLines }
+        $lastLine = $logLines[-1]
+        
+        $status = "Unknown"
+        $details = ""
+        $successLineFound = $null
+        
+        # Check for successful completion in the last 20 lines
+        foreach ($line in $linesToCheck) {
+            if ($line -match $accblkSuccessPattern) {
+                $successLineFound = $line
+                break
+            }
+        }
+        
+        # Determine status based on log check
+        if ($successLineFound) {
+            $status = "Success"
+            $details = "ACCBLK test completed successfully with Job ID 102"
+        }
+        else {
+            # Check for failures in the last 20 lines
+            $failureFound = $false
+            foreach ($line in $linesToCheck) {
+                if ($line -match $failurePattern) {
+                    $failureFound = $true
+                    break
+                }
+            }
+            
+            if ($failureFound) {
+                $status = "Failed"
+                $details = "ACCBLK test had failures"
+            } else {
+                $status = "In Progress"
+                $details = "ACCBLK test status unclear or still in progress"
+            }
+        }
+        
+        return @{
+            Found = $true
+            Status = $status
+            Details = $details
+            LogPath = $deidentifyLogPath
+            SuccessLine = $successLineFound
+            LastLine = $lastLine
+            TotalLines = $logLines.Count
+        }
+    }
+    catch {
+        Write-ColoredOutput "Error reading ACCBLK test log: $_" "ERROR"
+        return @{
+            Found = $false
+            Status = "Error"
+            Details = "Failed to read ACCBLK test log: $_"
+        }
+    }
+}
+
 # Function to generate HTML report
 function New-HtmlReport {
     param(
         [hashtable]$InstallLog,
         [hashtable]$DeIdentLog,
-        [hashtable]$RestApiLog
+        [hashtable]$RestApiLog,
+        [hashtable]$AccblkLog
     )
     
     Write-ColoredOutput "Generating HTML report..." "INFO"
@@ -349,12 +437,12 @@ function New-HtmlReport {
     $overallStatus = "Unknown"
     
     # Determine overall status
-    if ($InstallLog.Status -eq "Success" -and $DeIdentLog.Status -eq "Success" -and $RestApiLog.Status -eq "Success") {
+    if ($InstallLog.Status -eq "Success" -and $DeIdentLog.Status -eq "Success" -and $RestApiLog.Status -eq "Success" -and $AccblkLog.Status -eq "Success") {
         $overallStatus = "PASSED"
         $statusColor = "#28a745"
         $statusIcon = "✓"
     }
-    elseif ($InstallLog.Status -eq "Failed" -or $DeIdentLog.Status -eq "Failed" -or $RestApiLog.Status -eq "Failed") {
+    elseif ($InstallLog.Status -eq "Failed" -or $DeIdentLog.Status -eq "Failed" -or $RestApiLog.Status -eq "Failed" -or $AccblkLog.Status -eq "Failed") {
         $overallStatus = "FAILED"
         $statusColor = "#dc3545"
         $statusIcon = "✗"
@@ -681,10 +769,48 @@ $(if ($RestApiLog.Found -and $RestApiLog.LastLine) {
                 </div>
             </div>
             
+            <!-- ACCBLK Test Section -->
+            <div class="section">
+                <div class="section-header">
+                    ACCBLK Test Results
+                </div>
+                <div class="section-body">
+                    <div class="info-grid">
+                        <div class="info-label">Status:</div>
+                        <div class="info-value">
+                            <span class="status-badge status-$(($AccblkLog.Status -replace ' ', '').ToLower())">$($AccblkLog.Status)</span>
+                        </div>
+                        
+                        <div class="info-label">Details:</div>
+                        <div class="info-value">$($AccblkLog.Details)</div>
+                        
+$(if ($AccblkLog.Found) {
+"                        <div class='info-label'>Log File:</div>
+                        <div class='info-value'>$($AccblkLog.LogPath)</div>
+                        
+                        <div class='info-label'>Total Log Lines:</div>
+                        <div class='info-value'>$($AccblkLog.TotalLines)</div>"
+})
+                    </div>
+$(if ($AccblkLog.Found -and $AccblkLog.SuccessLine) {
+"                    <div style='margin-top: 15px;'>
+                        <strong>Success Log Entry Found:</strong>
+                        <div class='log-preview'>$([System.Web.HttpUtility]::HtmlEncode($AccblkLog.SuccessLine))</div>
+                    </div>"
+})
+$(if ($AccblkLog.Found -and $AccblkLog.LastLine) {
+"                    <div style='margin-top: 15px;'>
+                        <strong>Last Log Entry:</strong>
+                        <div class='log-preview'>$([System.Web.HttpUtility]::HtmlEncode($AccblkLog.LastLine))</div>
+                    </div>"
+})
+                </div>
+            </div>
+            
             <!-- Summary Statistics -->
             <div class="summary-stats">
                 <div class="stat-item">
-                    <div class="stat-value">3</div>
+                    <div class="stat-value">4</div>
                     <div class="stat-label">Test Phases</div>
                 </div>
                 <div class="stat-item">
@@ -693,7 +819,8 @@ $(if ($RestApiLog.Found -and $RestApiLog.LastLine) {
                         if ($InstallLog.Status -eq 'Success') { $successCount++ }
                         if ($DeIdentLog.Status -eq 'Success') { $successCount++ }
                         if ($RestApiLog.Status -eq 'Success') { $successCount++ }
-                        [math]::Round(($successCount / 3) * 100, 0).ToString() + '%'
+                        if ($AccblkLog.Status -eq 'Success') { $successCount++ }
+                        [math]::Round(($successCount / 4) * 100, 0).ToString() + '%'
                     )</div>
                     <div class="stat-label">Success Rate</div>
                 </div>
@@ -734,20 +861,24 @@ try {
     Write-ColoredOutput "Report generation started" "INFO"
     
     # Step 1: Get installation log
-    Write-Host "`n[Step 1/3] Analyzing installation logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 1/5] Analyzing installation logs..." -ForegroundColor Cyan
     $installLog = Get-InstallationLog
     
     # Step 2: Get DeIdentification log
-    Write-Host "`n[Step 2/4] Analyzing DeIdentification logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 2/5] Analyzing DeIdentification logs..." -ForegroundColor Cyan
     $deidentLog = Get-DeIdentificationLog
     
     # Step 3: Get REST API test log
-    Write-Host "`n[Step 3/4] Analyzing REST API test logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 3/5] Analyzing REST API test logs..." -ForegroundColor Cyan
     $restApiLog = Get-RestApiTestLog
     
-    # Step 4: Generate HTML report
-    Write-Host "`n[Step 4/4] Generating HTML report..." -ForegroundColor Cyan
-    $success = New-HtmlReport -InstallLog $installLog -DeIdentLog $deidentLog -RestApiLog $restApiLog
+    # Step 4: Get ACCBLK test log
+    Write-Host "`n[Step 4/5] Analyzing ACCBLK test logs..." -ForegroundColor Cyan
+    $accblkLog = Get-AccblkTestLog
+    
+    # Step 5: Generate HTML report
+    Write-Host "`n[Step 5/5] Generating HTML report..." -ForegroundColor Cyan
+    $success = New-HtmlReport -InstallLog $installLog -DeIdentLog $deidentLog -RestApiLog $restApiLog -AccblkLog $accblkLog
     
     if ($success) {
         Write-Host "`n========================================" -ForegroundColor Green

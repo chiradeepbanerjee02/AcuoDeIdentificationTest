@@ -68,6 +68,12 @@ jobs:
           Write-Host "Starting REST API Test..." -ForegroundColor Cyan
           ./RestApiTest.ps1
 
+      - name: Execute ACCBLK Test
+        shell: pwsh
+        run: |
+          Write-Host "Starting ACCBLK Test..." -ForegroundColor Cyan
+          ./ACCBLKTest.ps1
+
       - name: Generate HTML Report
         shell: pwsh
         if: always()
