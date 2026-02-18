@@ -27,7 +27,7 @@ param()
 $ErrorActionPreference = "Stop"
 
 # Define paths
-$outputDirPath = "C:\deidentification\output\DIR_OPTION"
+$outputDirPath = "C:\deidentification\output"
 $inputWatchPath = "C:\deidentification\inputwatch"
 $deidentifyLogPath = "C:\Windows\tracing\DeidentifyLog\Deidentify.txt"
 $serviceName = "AcuoDeidentification"
