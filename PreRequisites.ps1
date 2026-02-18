@@ -10,7 +10,7 @@
     1. Force deletes all subdirectories and files inside "C:\deidentification\output\DIR_OPTION"
     2. Force deletes all files inside "C:\deidentification\inputwatch"
     3. Restarts the "AcuoDeidentification" Windows service
-    4. Clears all contents of "Deidentify.txt" present in "C:\Windows\tracing\DeidentifyLog"
+    4. Stops the "AcuoDeidentification" Windows service, backs up "DeidentifyLog.txt" with timestamp, deletes the log file, and starts the service again
 
 .EXAMPLE
     .\PreRequisites.ps1
@@ -29,7 +29,7 @@ $ErrorActionPreference = "Stop"
 # Define paths
 $outputDirPath = "C:\deidentification\output"
 $inputWatchPath = "C:\deidentification\inputwatch"
-$deidentifyLogPath = "C:\Windows\tracing\DeidentifyLog\Deidentify.txt"
+$deidentifyLogPath = "C:\Windows\tracing\DeidentifyLog\DeidentifyLog.txt"
 $serviceName = "AcuoDeidentification"
 
 # Function to write colored output
@@ -255,56 +255,166 @@ function Restart-AcuoDeidentificationService {
     }
 }
 
-# Function to clear the Deidentify.txt log file
-function Clear-DeidentifyLog {
-    param([string]$LogPath)
+# Function to backup and delete the Deidentify.txt log file
+function Backup-AndDeleteDeidentifyLog {
+    param(
+        [string]$LogPath,
+        [string]$ServiceName
+    )
     
-    Write-ColoredOutput "Clearing Deidentify log file..." "INFO"
+    Write-ColoredOutput "Processing Deidentify log file..." "INFO"
     Write-ColoredOutput "Log file path: $LogPath" "INFO"
     
-    if (-not (Test-Path $LogPath)) {
-        Write-ColoredOutput "Log file does not exist: $LogPath" "WARNING"
-        Write-ColoredOutput "Creating empty log file..." "INFO"
-        try {
-            # Ensure the directory exists
-            $logDir = Split-Path -Path $LogPath -Parent
-            if (-not (Test-Path $logDir)) {
-                New-Item -Path $logDir -ItemType Directory -Force | Out-Null
-                Write-ColoredOutput "Created log directory: $logDir" "SUCCESS"
+    # Step 1: Stop the service
+    Write-ColoredOutput "Stopping $ServiceName service..." "INFO"
+    try {
+        $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        
+        if ($null -eq $service) {
+            Write-ColoredOutput "$ServiceName service not found" "WARNING"
+        }
+        elseif ($service.Status -eq 'Running' -or $service.Status -eq 'StartPending' -or $service.Status -eq 'Paused') {
+            Stop-Service -Name $ServiceName -Force -ErrorAction Stop
+            
+            # Wait for service to stop with timeout
+            $timeout = 30
+            $elapsed = 0
+            while ($elapsed -lt $timeout) {
+                Start-Sleep -Seconds 2
+                $elapsed += 2
+                
+                $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+                if ($null -eq $service) {
+                    Write-ColoredOutput "$ServiceName service was removed" "WARNING"
+                    break
+                }
+                
+                if ($service.Status -eq 'Stopped') {
+                    Write-ColoredOutput "$ServiceName service stopped successfully" "SUCCESS"
+                    break
+                }
             }
             
-            # Create empty file
-            New-Item -Path $LogPath -ItemType File -Force | Out-Null
-            Write-ColoredOutput "Created empty log file" "SUCCESS"
-        }
-        catch {
-            Write-ColoredOutput "Failed to create log file: $_" "ERROR"
-            throw
-        }
-        return
-    }
-    
-    try {
-        # Get file size before clearing
-        $fileSize = (Get-Item $LogPath).Length
-        Write-ColoredOutput "Current file size: $fileSize bytes" "INFO"
-        
-        # Clear the contents of the file
-        Clear-Content -Path $LogPath -Force -ErrorAction Stop
-        
-        Write-ColoredOutput "Log file contents cleared successfully" "SUCCESS"
-        
-        # Verify the file is empty
-        $newFileSize = (Get-Item $LogPath).Length
-        if ($newFileSize -eq 0) {
-            Write-ColoredOutput "Verification: File is now empty (0 bytes)" "SUCCESS"
+            # Check if service stopped
+            $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+            if ($null -ne $service -and $service.Status -ne 'Stopped') {
+                Write-ColoredOutput "Service did not stop within $timeout seconds. Current status: $($service.Status)" "WARNING"
+            }
         }
         else {
-            Write-ColoredOutput "Warning: File size is $newFileSize bytes (expected 0)" "WARNING"
+            Write-ColoredOutput "$ServiceName service is already stopped" "INFO"
         }
     }
     catch {
-        Write-ColoredOutput "Error clearing log file: $_" "ERROR"
+        Write-ColoredOutput "Error stopping $ServiceName service: $_" "ERROR"
+        throw
+    }
+    
+    # Step 2: Backup the log file if it exists
+    if (-not (Test-Path $LogPath)) {
+        Write-ColoredOutput "Log file does not exist: $LogPath" "WARNING"
+        Write-ColoredOutput "No backup needed" "INFO"
+    }
+    else {
+        try {
+            # Get file size
+            $fileSize = (Get-Item $LogPath).Length
+            Write-ColoredOutput "Current file size: $fileSize bytes" "INFO"
+            
+            # Create backup filename with timestamp
+            $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+            $logDir = Split-Path -Path $LogPath -Parent
+            $logFileName = Split-Path -Path $LogPath -Leaf
+            $logFileNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($logFileName)
+            $logFileExt = [System.IO.Path]::GetExtension($logFileName)
+            $backupFileName = "${logFileNameWithoutExt}_${timestamp}${logFileExt}"
+            $backupPath = Join-Path $logDir $backupFileName
+            
+            Write-ColoredOutput "Creating backup: $backupFileName" "INFO"
+            
+            # Copy the file to backup
+            Copy-Item -Path $LogPath -Destination $backupPath -Force -ErrorAction Stop
+            
+            Write-ColoredOutput "Backup created successfully: $backupPath" "SUCCESS"
+            
+            # Verify backup file exists
+            if (Test-Path $backupPath) {
+                $backupSize = (Get-Item $backupPath).Length
+                Write-ColoredOutput "Backup file size: $backupSize bytes" "SUCCESS"
+            }
+        }
+        catch {
+            Write-ColoredOutput "Error creating backup: $_" "ERROR"
+            Write-ColoredOutput "WARNING: Backup failed, but continuing with deletion. Original log data may be lost!" "WARNING"
+            # Continue with deletion even if backup fails
+        }
+    }
+    
+    # Step 3: Delete the original log file
+    if (Test-Path $LogPath) {
+        try {
+            Write-ColoredOutput "Deleting original log file: $LogPath" "INFO"
+            Remove-Item -Path $LogPath -Force -ErrorAction Stop
+            Write-ColoredOutput "Log file deleted successfully" "SUCCESS"
+            
+            # Verify deletion
+            if (-not (Test-Path $LogPath)) {
+                Write-ColoredOutput "Verification: Log file has been deleted" "SUCCESS"
+            }
+            else {
+                Write-ColoredOutput "Warning: Log file still exists after deletion attempt" "WARNING"
+            }
+        }
+        catch {
+            Write-ColoredOutput "Error deleting log file: $_" "ERROR"
+            throw
+        }
+    }
+    
+    # Step 4: Start the service
+    Write-ColoredOutput "Starting $ServiceName service..." "INFO"
+    try {
+        $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        
+        if ($null -eq $service) {
+            Write-ColoredOutput "$ServiceName service not found" "WARNING"
+            return
+        }
+        
+        if ($service.Status -eq 'Stopped') {
+            Start-Service -Name $ServiceName -ErrorAction Stop
+            
+            # Wait for service to start with timeout
+            $timeout = 30
+            $elapsed = 0
+            while ($elapsed -lt $timeout) {
+                Start-Sleep -Seconds 2
+                $elapsed += 2
+                
+                $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+                if ($null -eq $service) {
+                    Write-ColoredOutput "$ServiceName service was removed" "WARNING"
+                    return
+                }
+                
+                if ($service.Status -eq 'Running') {
+                    Write-ColoredOutput "$ServiceName service started successfully" "SUCCESS"
+                    return
+                }
+            }
+            
+            # If we get here, service didn't start within timeout
+            $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+            if ($null -ne $service) {
+                Write-ColoredOutput "Service did not start within $timeout seconds. Current status: $($service.Status)" "WARNING"
+            }
+        }
+        else {
+            Write-ColoredOutput "$ServiceName service is in '$($service.Status)' state" "INFO"
+        }
+    }
+    catch {
+        Write-ColoredOutput "Error starting $ServiceName service: $_" "ERROR"
         throw
     }
 }
@@ -337,9 +447,9 @@ try {
     Write-Host "`n[Step 3/4] Restarting AcuoDeidentification service..." -ForegroundColor Cyan
     Restart-AcuoDeidentificationService -ServiceName $serviceName
     
-    # Step 4: Clear Deidentify.txt log file
-    Write-Host "`n[Step 4/4] Clearing Deidentify.txt log file..." -ForegroundColor Cyan
-    Clear-DeidentifyLog -LogPath $deidentifyLogPath
+    # Step 4: Backup and delete Deidentify.txt log file
+    Write-Host "`n[Step 4/4] Backing up and deleting Deidentify.txt log file..." -ForegroundColor Cyan
+    Backup-AndDeleteDeidentifyLog -LogPath $deidentifyLogPath -ServiceName $serviceName
     
     # Final summary
     Write-Host "`n========================================" -ForegroundColor Green
