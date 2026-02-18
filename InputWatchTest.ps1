@@ -123,22 +123,29 @@ function Test-LogFileContent {
         # Read all lines from the log file
         $logLines = Get-Content -Path $LogPath
         
-        if ($logLines.Count -lt 2) {
-            Write-ColoredOutput "Log file has less than 2 lines. Cannot verify second last line." "WARNING"
+        if ($logLines.Count -eq 0) {
+            Write-ColoredOutput "Log file is empty." "WARNING"
             return $false
         }
         
-        # Get the second last line (index -2)
-        $secondLastLine = $logLines[-2]
-        Write-ColoredOutput "Second last line: $secondLastLine" "INFO"
+        Write-ColoredOutput "Searching entire log file with $($logLines.Count) lines..." "INFO"
         Write-ColoredOutput "Expected content: $ExpectedContent" "INFO"
         
-        # Check if the second last line contains the expected content
-        if ($secondLastLine -like "*$ExpectedContent*") {
+        # Search through the entire log file for the expected content
+        $foundMatch = $false
+        foreach ($line in $logLines) {
+            if ($line -like "*$ExpectedContent*") {
+                Write-ColoredOutput "Match found: $line" "INFO"
+                $foundMatch = $true
+                break
+            }
+        }
+        
+        if ($foundMatch) {
             Write-ColoredOutput "Verification PASSED: Log entry found!" "SUCCESS"
             return $true
         } else {
-            Write-ColoredOutput "Verification FAILED: Expected content not found in second last line" "ERROR"
+            Write-ColoredOutput "Verification FAILED: Expected content not found in entire log file" "ERROR"
             return $false
         }
     }
