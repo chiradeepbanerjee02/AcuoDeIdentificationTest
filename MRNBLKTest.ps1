@@ -63,7 +63,7 @@ function Wait-ForJobIdInLog {
     param(
         [string]$LogPath,
         [string]$JobId,
-        [int]$TimeoutSeconds = 120,
+        [int]$TimeoutSeconds = 3000,
         [int]$CheckIntervalSeconds = 5
     )
     
