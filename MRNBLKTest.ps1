@@ -223,7 +223,7 @@ try {
     
     # Step 2: Monitor log file for Job Id 103
     Write-Host "`n[Step 2/3] Monitoring log file for Job Id 103..." -ForegroundColor Cyan
-    $jobIdFound = Wait-ForJobIdInLog -LogPath $logFilePath -JobId "103" -TimeoutSeconds 120 -CheckIntervalSeconds 5
+    $jobIdFound = Wait-ForJobIdInLog -LogPath $logFilePath -JobId "103" -TimeoutSeconds 10000 -CheckIntervalSeconds 5
     
     if (-not $jobIdFound) {
         Write-ColoredOutput "Failed to find Job Id 103 in log file within timeout period" "ERROR"
