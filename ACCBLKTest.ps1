@@ -73,9 +73,8 @@ function Wait-ForJobIdInLog {
     Write-ColoredOutput "Check interval: $CheckIntervalSeconds seconds" "INFO"
     
     $startTime = Get-Date
-    $foundJobId = $false
     
-    while (-not $foundJobId) {
+    while ($true) {
         $elapsed = ((Get-Date) - $startTime).TotalSeconds
         
         # Check for timeout
@@ -90,10 +89,9 @@ function Wait-ForJobIdInLog {
                 # Read the log file content
                 $logContent = Get-Content -Path $LogPath -Raw
                 
-                # Check if Job Id appears in the log
-                if ($logContent -match "Job Id $JobId" -or $logContent -match "Job ID: $JobId" -or $logContent -match "jobID.*$JobId") {
+                # Check if Job Id appears in the log (case-insensitive)
+                if ($logContent -match "(?i)Job Id $JobId" -or $logContent -match "(?i)Job ID: $JobId" -or $logContent -match "(?i)jobID.*$JobId") {
                     Write-ColoredOutput "Job Id $JobId found in log file!" "SUCCESS"
-                    $foundJobId = $true
                     return $true
                 }
             }
@@ -111,8 +109,6 @@ function Wait-ForJobIdInLog {
         # Wait before next check
         Start-Sleep -Seconds $CheckIntervalSeconds
     }
-    
-    return $foundJobId
 }
 
 # Function to copy file to inputwatch directory
