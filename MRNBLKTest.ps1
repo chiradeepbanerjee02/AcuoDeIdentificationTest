@@ -30,7 +30,7 @@ $scriptDir = $PSScriptRoot
 $sourceFile = Join-Path $scriptDir "103_DefaultProfile_02182025.txt"
 $destinationDir = "C:\deidentification\inputwatch"
 $logFilePath = "C:\Windows\tracing\DeidentifyLog\DeidentifyLog.txt"
-$expectedLogEntry = "for jobID"
+$expectedLogEntry = "Job ID: 103, Status callback:"
 
 # Function to write colored output
 function Write-ColoredOutput {
