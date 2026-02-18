@@ -7,8 +7,8 @@
 
 .DESCRIPTION
     This script performs the following pre-requisite operations before running tests:
-    1. Force deletes all subdirectories and files inside "C:\deidentification\output\DIR_OPTION"
-    2. Force deletes all files inside "C:\deidentification\inputwatch"
+    1. Force deletes all subdirectories and files inside "C:\deidentification\output\DIR_OPTION" (uses multiple deletion attempts including rmdir for robustness)
+    2. Force deletes all files inside "C:\deidentification\inputwatch" (uses multiple deletion attempts for robustness)
     3. Restarts the "AcuoDeidentification" Windows service
     4. Stops the "AcuoDeidentification" Windows service, backs up "DeidentifyLog.txt" with timestamp, deletes the log file, and starts the service again
 
@@ -18,6 +18,7 @@
 .NOTES
     - This script requires Administrator privileges
     - Run this script before InputWatchTest.ps1 to ensure clean test environment
+    - The deletion process now uses multiple attempts to handle locked/in-use files more robustly
 #>
 
 [CmdletBinding()]
@@ -90,18 +91,41 @@ function Remove-OutputDirectory {
         
         Write-ColoredOutput "Found $($items.Count) items to delete" "INFO"
         
-        # Force delete all subdirectories and files
-        Remove-Item -Path "$Path\*" -Recurse -Force -ErrorAction Stop
+        # Attempt 1: Force delete all subdirectories and files using Remove-Item
+        Write-ColoredOutput "Attempting to delete using Remove-Item..." "INFO"
+        Remove-Item -Path "$Path\*" -Recurse -Force -ErrorAction SilentlyContinue
         
-        Write-ColoredOutput "Successfully deleted all subdirectories and files" "SUCCESS"
-        
-        # Verify deletion
+        # Check if there are remaining items
         $remainingItems = Get-ChildItem -Path $Path -Force -ErrorAction SilentlyContinue
+        
         if ($remainingItems.Count -eq 0) {
+            Write-ColoredOutput "Successfully deleted all subdirectories and files" "SUCCESS"
+            Write-ColoredOutput "Verification: Directory is now empty" "SUCCESS"
+            return
+        }
+        
+        # Attempt 2: If items remain, try using cmd /c rmdir for more forceful deletion
+        Write-ColoredOutput "Warning: $($remainingItems.Count) items still remain after first attempt" "WARNING"
+        Write-ColoredOutput "Attempting forceful deletion using rmdir..." "INFO"
+        
+        # Use cmd /c rmdir /s /q which can be more aggressive on Windows
+        $cmdOutput = cmd /c "rmdir /s /q `"$Path`"" 2>&1
+        
+        # Recreate the directory since rmdir removes it entirely
+        if (-not (Test-Path $Path)) {
+            New-Item -Path $Path -ItemType Directory -Force | Out-Null
+            Write-ColoredOutput "Directory recreated after rmdir" "INFO"
+        }
+        
+        # Final verification
+        $finalCheck = Get-ChildItem -Path $Path -Force -ErrorAction SilentlyContinue
+        if ($finalCheck.Count -eq 0) {
+            Write-ColoredOutput "Successfully force deleted all contents" "SUCCESS"
             Write-ColoredOutput "Verification: Directory is now empty" "SUCCESS"
         }
         else {
-            Write-ColoredOutput "Warning: $($remainingItems.Count) items still remain" "WARNING"
+            Write-ColoredOutput "Warning: $($finalCheck.Count) items still remain after all attempts" "WARNING"
+            Write-ColoredOutput "Some files may be locked or in use by other processes" "WARNING"
         }
     }
     catch {
@@ -142,18 +166,45 @@ function Remove-InputWatchDirectory {
         
         Write-ColoredOutput "Found $($items.Count) file(s) to delete" "INFO"
         
-        # Force delete all files
-        Remove-Item -Path "$Path\*" -Force -ErrorAction Stop
+        # Attempt 1: Force delete all files using Remove-Item
+        Write-ColoredOutput "Attempting to delete using Remove-Item..." "INFO"
+        Remove-Item -Path "$Path\*" -Force -ErrorAction SilentlyContinue
         
-        Write-ColoredOutput "Successfully deleted all files" "SUCCESS"
-        
-        # Verify deletion
+        # Check if there are remaining items
         $remainingItems = Get-ChildItem -Path $Path -File -Force -ErrorAction SilentlyContinue
+        
         if ($remainingItems.Count -eq 0) {
+            Write-ColoredOutput "Successfully deleted all files" "SUCCESS"
+            Write-ColoredOutput "Verification: Directory is now clean" "SUCCESS"
+            return
+        }
+        
+        # Attempt 2: If files remain, try deleting them individually with more force
+        Write-ColoredOutput "Warning: $($remainingItems.Count) file(s) still remain after first attempt" "WARNING"
+        Write-ColoredOutput "Attempting to delete remaining files individually..." "INFO"
+        
+        foreach ($item in $remainingItems) {
+            try {
+                # Remove read-only attribute if present
+                if ($item.IsReadOnly) {
+                    $item.IsReadOnly = $false
+                }
+                Remove-Item -Path $item.FullName -Force -ErrorAction SilentlyContinue
+            }
+            catch {
+                Write-ColoredOutput "Could not delete: $($item.Name)" "WARNING"
+            }
+        }
+        
+        # Final verification
+        $finalCheck = Get-ChildItem -Path $Path -File -Force -ErrorAction SilentlyContinue
+        if ($finalCheck.Count -eq 0) {
+            Write-ColoredOutput "Successfully force deleted all files" "SUCCESS"
             Write-ColoredOutput "Verification: Directory is now clean" "SUCCESS"
         }
         else {
-            Write-ColoredOutput "Warning: $($remainingItems.Count) file(s) still remain" "WARNING"
+            Write-ColoredOutput "Warning: $($finalCheck.Count) file(s) still remain after all attempts" "WARNING"
+            Write-ColoredOutput "Some files may be locked or in use by other processes" "WARNING"
         }
     }
     catch {
