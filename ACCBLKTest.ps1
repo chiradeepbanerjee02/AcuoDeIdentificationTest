@@ -8,7 +8,7 @@
 .DESCRIPTION
     This script performs the following test operations:
     1. Copies "102_DefaultProfile_02182025.txt" to "C:\deidentification\inputwatch"
-    2. Waits for 60 seconds for processing to complete
+    2. Monitors the log file periodically for Job Id 102 (with timeout)
     3. Verifies the deidentification log for successful completion
 
 .EXAMPLE
@@ -56,6 +56,63 @@ function Test-Administrator {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+# Function to wait for Job Id in log file
+function Wait-ForJobIdInLog {
+    param(
+        [string]$LogPath,
+        [string]$JobId,
+        [int]$TimeoutSeconds = 120,
+        [int]$CheckIntervalSeconds = 5
+    )
+    
+    Write-ColoredOutput "Monitoring log file for Job Id $JobId..." "INFO"
+    Write-ColoredOutput "Log file path: $LogPath" "INFO"
+    Write-ColoredOutput "Timeout: $TimeoutSeconds seconds" "INFO"
+    Write-ColoredOutput "Check interval: $CheckIntervalSeconds seconds" "INFO"
+    
+    $startTime = Get-Date
+    $foundJobId = $false
+    
+    while (-not $foundJobId) {
+        $elapsed = ((Get-Date) - $startTime).TotalSeconds
+        
+        # Check for timeout
+        if ($elapsed -ge $TimeoutSeconds) {
+            Write-ColoredOutput "Timeout reached after $TimeoutSeconds seconds without finding Job Id $JobId" "ERROR"
+            return $false
+        }
+        
+        # Check if log file exists
+        if (Test-Path $LogPath) {
+            try {
+                # Read the log file content
+                $logContent = Get-Content -Path $LogPath -Raw
+                
+                # Check if Job Id appears in the log
+                if ($logContent -match "Job Id $JobId" -or $logContent -match "Job ID: $JobId" -or $logContent -match "jobID.*$JobId") {
+                    Write-ColoredOutput "Job Id $JobId found in log file!" "SUCCESS"
+                    $foundJobId = $true
+                    return $true
+                }
+            }
+            catch {
+                Write-ColoredOutput "Error reading log file: $_" "WARNING"
+            }
+        } else {
+            Write-ColoredOutput "Log file not found yet at: $LogPath" "WARNING"
+        }
+        
+        # Display progress
+        $remaining = $TimeoutSeconds - [int]$elapsed
+        Write-ColoredOutput "Waiting for Job Id $JobId... (${remaining}s remaining)" "INFO"
+        
+        # Wait before next check
+        Start-Sleep -Seconds $CheckIntervalSeconds
+    }
+    
+    return $foundJobId
 }
 
 # Function to copy file to inputwatch directory
@@ -168,18 +225,16 @@ try {
     Write-Host "`n[Step 1/3] Copying file to inputwatch directory..." -ForegroundColor Cyan
     Copy-FileToInputWatch -SourcePath $sourceFile -DestinationDirectory $destinationDir
     
-    # Step 2: Wait for 60 seconds
-    Write-Host "`n[Step 2/3] Waiting for 60 seconds for processing..." -ForegroundColor Cyan
-    $waitSeconds = 60
-    Write-ColoredOutput "Waiting for $waitSeconds seconds..." "INFO"
+    # Step 2: Monitor log file for Job Id 102
+    Write-Host "`n[Step 2/3] Monitoring log file for Job Id 102..." -ForegroundColor Cyan
+    $jobIdFound = Wait-ForJobIdInLog -LogPath $logFilePath -JobId "102" -TimeoutSeconds 120 -CheckIntervalSeconds 5
     
-    for ($i = 0; $i -lt $waitSeconds; $i += 9) {
-        $remaining = $waitSeconds - $i
-        Write-ColoredOutput "Time remaining: $remaining seconds..." "INFO"
-        Start-Sleep -Seconds 9
+    if (-not $jobIdFound) {
+        Write-ColoredOutput "Failed to find Job Id 102 in log file within timeout period" "ERROR"
+        throw "Job Id 102 not found in log file"
     }
     
-    Write-ColoredOutput "Wait period completed" "SUCCESS"
+    Write-ColoredOutput "Job Id 102 detected, proceeding to verification" "SUCCESS"
     
     # Step 3: Verify log file content
     Write-Host "`n[Step 3/3] Verifying log file content..." -ForegroundColor Cyan
