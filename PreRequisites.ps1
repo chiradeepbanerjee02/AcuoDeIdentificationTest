@@ -325,7 +325,9 @@ function Backup-AndDeleteDeidentifyLog {
             $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
             $logDir = Split-Path -Path $LogPath -Parent
             $logFileName = Split-Path -Path $LogPath -Leaf
-            $backupFileName = "$($logFileName -replace '\.txt$', '')_$timestamp.txt"
+            $logFileNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($logFileName)
+            $logFileExt = [System.IO.Path]::GetExtension($logFileName)
+            $backupFileName = "${logFileNameWithoutExt}_${timestamp}${logFileExt}"
             $backupPath = Join-Path $logDir $backupFileName
             
             Write-ColoredOutput "Creating backup: $backupFileName" "INFO"
@@ -343,6 +345,7 @@ function Backup-AndDeleteDeidentifyLog {
         }
         catch {
             Write-ColoredOutput "Error creating backup: $_" "ERROR"
+            Write-ColoredOutput "WARNING: Backup failed, but continuing with deletion. Original log data may be lost!" "WARNING"
             # Continue with deletion even if backup fails
         }
     }

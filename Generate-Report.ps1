@@ -16,6 +16,8 @@
 .NOTES
     - Run this script after Install-DeIdentification.ps1 and InputWatchTest.ps1
     - The report will be generated in the current directory as Reports.html
+    - Log analysis reads entire log files for comprehensive searching. For very large log files, 
+      this may consume significant memory. Consider file size limits in production environments.
 #>
 
 [CmdletBinding()]
