@@ -56,7 +56,7 @@ jobs:
           Write-Host "Running Pre-Requisites..." -ForegroundColor Cyan
           ./PreRequisites.ps1
 
-      - name: Execute Deidentification Tests
+      - name: Execute InputWach Test
         shell: pwsh
         run: |
           Write-Host "Starting DeIdentification Tests..." -ForegroundColor Cyan
