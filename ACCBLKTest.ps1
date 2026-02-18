@@ -8,7 +8,7 @@
 .DESCRIPTION
     This script performs the following test operations:
     1. Copies "102_DefaultProfile_02182025.txt" to "C:\deidentification\inputwatch"
-    2. Waits for 2 minutes for processing to complete
+    2. Waits for 45 seconds for processing to complete
     3. Verifies the deidentification log for successful completion
 
 .EXAMPLE
