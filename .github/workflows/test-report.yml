@@ -74,6 +74,12 @@ jobs:
           Write-Host "Starting ACCBLK Test..." -ForegroundColor Cyan
           ./ACCBLKTest.ps1
 
+      - name: Execute MRNBLK Test
+        shell: pwsh
+        run: |
+          Write-Host "Starting MRNBLK Test..." -ForegroundColor Cyan
+          ./MRNBLKTest.ps1
+
       - name: Generate HTML Report
         shell: pwsh
         if: always()
