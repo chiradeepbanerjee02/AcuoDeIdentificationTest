@@ -8,7 +8,7 @@
 .DESCRIPTION
     This script performs the following test operations:
     1. Copies "103_DefaultProfile_02182025.txt" to "C:\deidentification\inputwatch"
-    2. Waits for 45 seconds for processing to complete
+    2. Waits for 180 seconds for processing to complete
     3. Verifies the deidentification log for successful completion
 
 .EXAMPLE
@@ -168,9 +168,9 @@ try {
     Write-Host "`n[Step 1/3] Copying file to inputwatch directory..." -ForegroundColor Cyan
     Copy-FileToInputWatch -SourcePath $sourceFile -DestinationDirectory $destinationDir
     
-    # Step 2: Wait for 45 seconds
-    Write-Host "`n[Step 2/3] Waiting for 45 seconds for processing..." -ForegroundColor Cyan
-    $waitSeconds = 45
+    # Step 2: Wait for 180 seconds
+    Write-Host "`n[Step 2/3] Waiting for 180 seconds for processing..." -ForegroundColor Cyan
+    $waitSeconds = 180
     Write-ColoredOutput "Waiting for $waitSeconds seconds..." "INFO"
     
     for ($i = 0; $i -lt $waitSeconds; $i += 9) {
