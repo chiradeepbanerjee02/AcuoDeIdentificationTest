@@ -128,9 +128,9 @@ function Test-LogFileContent {
             return $false
         }
         
-        # Get the second last line (index -2)
-        $secondLastLine = $logLines[-2]
-        Write-ColoredOutput "Second last line: $secondLastLine" "INFO"
+        # Get the last line (index -1)
+        $secondLastLine = $logLines[-1]
+        Write-ColoredOutput "Slast line: $LastLine" "INFO"
         Write-ColoredOutput "Expected content: $ExpectedContent" "INFO"
         
         # Check if the second last line contains the expected content
@@ -138,7 +138,7 @@ function Test-LogFileContent {
             Write-ColoredOutput "Verification PASSED: Log entry found!" "SUCCESS"
             return $true
         } else {
-            Write-ColoredOutput "Verification FAILED: Expected content not found in second last line" "ERROR"
+            Write-ColoredOutput "Verification FAILED: Expected content not found in last line" "ERROR"
             return $false
         }
     }
