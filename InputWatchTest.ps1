@@ -168,15 +168,15 @@ try {
     Write-Host "`n[Step 1/3] Copying file to inputwatch directory..." -ForegroundColor Cyan
     Copy-FileToInputWatch -SourcePath $sourceFile -DestinationDirectory $destinationDir
     
-    # Step 2: Wait for 2 minutes
-    Write-Host "`n[Step 2/3] Waiting for 2 minutes for processing..." -ForegroundColor Cyan
-    $waitSeconds = 120
+    # Step 2: Wait for 45 seconds
+    Write-Host "`n[Step 2/3] Waiting for 45 seconds for processing..." -ForegroundColor Cyan
+    $waitSeconds = 45
     Write-ColoredOutput "Waiting for $waitSeconds seconds..." "INFO"
     
-    for ($i = 0; $i -lt $waitSeconds; $i += 10) {
+    for ($i = 0; $i -lt $waitSeconds; $i += 9) {
         $remaining = $waitSeconds - $i
         Write-ColoredOutput "Time remaining: $remaining seconds..." "INFO"
-        Start-Sleep -Seconds 10
+        Start-Sleep -Seconds 9
     }
     
     Write-ColoredOutput "Wait period completed" "SUCCESS"
