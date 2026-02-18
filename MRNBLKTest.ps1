@@ -90,7 +90,7 @@ function Wait-ForJobIdInLog {
                 $logContent = Get-Content -Path $LogPath -Raw
                 
                 # Check if Job Id appears in the log (case-insensitive)
-                if ($logContent -match "(?i)Job Id $JobId" -or $logContent -match "(?i)Job ID: $JobId" -or $logContent -match "(?i)jobID.*$JobId") {
+                if ($logContent -match "(?i)Job Id\s+$JobId\b" -or $logContent -match "(?i)Job ID:\s+$JobId\b" -or $logContent -match "(?i)jobID\s+$JobId\b") {
                     Write-ColoredOutput "Job Id $JobId found in log file!" "SUCCESS"
                     return $true
                 }
