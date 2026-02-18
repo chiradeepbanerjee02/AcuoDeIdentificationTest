@@ -172,26 +172,30 @@ function Test-LogFileContent {
         return $false
     }
     
+    # Wait 10 seconds before reading the log file
+    Write-ColoredOutput "Waiting 10 seconds before reading log file..." "INFO"
+    Start-Sleep -Seconds 10
+    
     try {
         # Read all lines from the log file
         $logLines = Get-Content -Path $LogPath
         
-        if ($logLines.Count -lt 1) {
-            Write-ColoredOutput "Log file has no lines. Cannot verify last line." "WARNING"
+        if ($logLines.Count -lt 2) {
+            Write-ColoredOutput "Log file has less than 2 lines. Cannot verify second last line." "WARNING"
             return $false
         }
         
-        # Get the last line (index -1)
-        $lastLine = $logLines[-1]
-        Write-ColoredOutput "Last line: $lastLine" "INFO"
+        # Get the second last line (index -2)
+        $secondLastLine = $logLines[-2]
+        Write-ColoredOutput "Second last line: $secondLastLine" "INFO"
         Write-ColoredOutput "Expected content: $ExpectedContent" "INFO"
         
-        # Check if the last line contains the expected content
-        if ($lastLine -like "*$ExpectedContent*") {
+        # Check if the second last line contains the expected content
+        if ($secondLastLine -like "*$ExpectedContent*") {
             Write-ColoredOutput "Verification PASSED: Log entry found!" "SUCCESS"
             return $true
         } else {
-            Write-ColoredOutput "Verification FAILED: Expected content not found in last line" "ERROR"
+            Write-ColoredOutput "Verification FAILED: Expected content not found in second last line" "ERROR"
             return $false
         }
     }
