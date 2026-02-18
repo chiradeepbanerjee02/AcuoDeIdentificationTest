@@ -37,7 +37,7 @@ $outputDirPath = "C:\deidentification\output\DIR_OPTION"
 $successPattern = "Job ID: 100.*successful 1.*failed 0.*completionPercentage: 100%"
 $failurePattern = "failed [1-9]\d*"
 $restApiSuccessPattern = "Job ID: 101.*successful 1.*failed 0.*completionPercentage: 100%"
-$accblkSuccessPattern = "Job ID: 102.*successful 1.*failed 0.*completionPercentage: 100%"
+$accblkSuccessPattern = "for jobID 102 took"
 $mrnblkSuccessPattern = "for jobID 103 took"
 
 # Function to write colored output
