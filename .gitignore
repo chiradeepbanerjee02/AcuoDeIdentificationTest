@@ -4,6 +4,9 @@ test-reports/
 # Generated HTML reports
 Reports.html
 
+# Generated test results
+Part10TestResults.json
+
 # Temporary files
 *.tmp
 *.log
