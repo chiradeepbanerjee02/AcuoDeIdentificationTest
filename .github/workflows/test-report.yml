@@ -86,6 +86,12 @@ jobs:
           Write-Host "Starting Part10 REST API Test..." -ForegroundColor Cyan
           ./Test-Part10RestApi.ps1
 
+      - name: Execute Job 104 Test
+        shell: pwsh
+        run: |
+          Write-Host "Starting Job 104 Test..." -ForegroundColor Cyan
+          ./Job104Test.ps1
+
       - name: Generate HTML Report
         shell: pwsh
         if: always()
