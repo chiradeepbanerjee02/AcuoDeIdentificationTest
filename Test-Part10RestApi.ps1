@@ -265,6 +265,42 @@ try {
     Write-Host "========================================`n" -ForegroundColor Green
     
     Write-ColoredOutput "Part10 REST API test completed successfully" "SUCCESS"
+    
+    # Archive part10 directory with timestamp
+    try {
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "Archiving part10 Directory" -ForegroundColor Cyan
+        Write-Host "========================================`n" -ForegroundColor Cyan
+        
+        $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+        $archiveDir = "C:\Acuo\part10_$timestamp"
+        
+        Write-ColoredOutput "Creating archive directory: $archiveDir" "INFO"
+        
+        if (Test-Path $part10Dir) {
+            # Copy contents of part10 to new timestamped folder
+            Write-ColoredOutput "Copying contents from $part10Dir to $archiveDir..." "INFO"
+            Copy-Item -Path $part10Dir -Destination $archiveDir -Recurse -Force
+            Write-ColoredOutput "Archive copy completed successfully" "SUCCESS"
+            
+            # Force delete all contents of part10 directory
+            Write-ColoredOutput "Deleting contents of $part10Dir..." "INFO"
+            Remove-Item -Path "$part10Dir\*" -Recurse -Force -ErrorAction Stop
+            Write-ColoredOutput "part10 directory contents deleted successfully" "SUCCESS"
+        }
+        else {
+            Write-ColoredOutput "part10 directory does not exist, skipping archive" "WARNING"
+        }
+        
+        Write-Host "`n========================================" -ForegroundColor Green
+        Write-Host "Archive and Cleanup Completed!" -ForegroundColor Green
+        Write-Host "========================================`n" -ForegroundColor Green
+    }
+    catch {
+        Write-ColoredOutput "Error during archive/cleanup process: $_" "ERROR"
+        Write-Host "Error: $_" -ForegroundColor Red
+    }
+    
     exit 0
 }
 catch {
