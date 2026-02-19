@@ -1,0 +1,4 @@
+http://localhost:8081/AcuoREST/genp10/patients/P210
+http://localhost:8081/AcuoREST/genp10/patients/DBT-P00001/studies/1.2.826.0.1.3680043.8.498.11387662677066579919319049302075478647
+http://localhost:8081/AcuoREST/genp10/patients/MRN000001/studiesaccno/ACC0000012
+http://localhost:8081/AcuoREST/genp10/studies/2.4.804.1.2.6941575.1.968.2752567556652250046
