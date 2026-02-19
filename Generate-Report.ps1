@@ -503,6 +503,80 @@ function Get-MrnblkTestLog {
     }
 }
 
+# Function to read Part10 test results
+function Get-Part10TestResults {
+    Write-ColoredOutput "Reading Part10 test results..." "INFO"
+    
+    $resultsFilePath = Join-Path $scriptDir "Part10TestResults.json"
+    
+    if (-not (Test-Path $resultsFilePath)) {
+        Write-ColoredOutput "Part10 test results file not found: $resultsFilePath" "WARNING"
+        return @{
+            Found = $false
+            Status = "Not Found"
+            Details = "Part10 test results file does not exist. Test may not have been run."
+        }
+    }
+    
+    try {
+        $resultsJson = Get-Content -Path $resultsFilePath -Raw | ConvertFrom-Json
+        
+        if (-not $resultsJson) {
+            return @{
+                Found = $true
+                Status = "Error"
+                Details = "Part10 test results file is empty or invalid"
+            }
+        }
+        
+        # Determine overall status
+        $status = "Unknown"
+        $details = ""
+        
+        if ($resultsJson.PSObject.Properties['Success'] -and -not $resultsJson.Success) {
+            $status = "Failed"
+            $details = "Part10 test execution failed: $($resultsJson.Error)"
+        }
+        elseif ($resultsJson.TotalApiCalls -gt 0) {
+            if ($resultsJson.FailedCalls -eq 0) {
+                $status = "Success"
+                $details = "All $($resultsJson.TotalApiCalls) API calls completed successfully"
+            }
+            elseif ($resultsJson.SuccessfulCalls -gt 0) {
+                $status = "Partial"
+                $details = "$($resultsJson.SuccessfulCalls) of $($resultsJson.TotalApiCalls) API calls succeeded"
+            }
+            else {
+                $status = "Failed"
+                $details = "All $($resultsJson.TotalApiCalls) API calls failed"
+            }
+        }
+        else {
+            $status = "No Data"
+            $details = "No API calls were processed"
+        }
+        
+        Write-ColoredOutput "Part10 test results loaded successfully" "SUCCESS"
+        Write-ColoredOutput "Status: $status - $details" "INFO"
+        
+        return @{
+            Found = $true
+            Status = $status
+            Details = $details
+            TestData = $resultsJson
+            ResultsFile = $resultsFilePath
+        }
+    }
+    catch {
+        Write-ColoredOutput "Error reading Part10 test results: $_" "ERROR"
+        return @{
+            Found = $false
+            Status = "Error"
+            Details = "Failed to read Part10 test results: $_"
+        }
+    }
+}
+
 # Function to generate HTML report
 function New-HtmlReport {
     param(
@@ -510,7 +584,8 @@ function New-HtmlReport {
         [hashtable]$DeIdentLog,
         [hashtable]$RestApiLog,
         [hashtable]$AccblkLog,
-        [hashtable]$MrnblkLog
+        [hashtable]$MrnblkLog,
+        [hashtable]$Part10Log
     )
     
     Write-ColoredOutput "Generating HTML report..." "INFO"
@@ -519,12 +594,12 @@ function New-HtmlReport {
     $overallStatus = "Unknown"
     
     # Determine overall status
-    if ($InstallLog.Status -eq "Success" -and $DeIdentLog.Status -eq "Success" -and $RestApiLog.Status -eq "Success" -and $AccblkLog.Status -eq "Success" -and $MrnblkLog.Status -eq "Success") {
+    if ($InstallLog.Status -eq "Success" -and $DeIdentLog.Status -eq "Success" -and $RestApiLog.Status -eq "Success" -and $AccblkLog.Status -eq "Success" -and $MrnblkLog.Status -eq "Success" -and $Part10Log.Status -eq "Success") {
         $overallStatus = "PASSED"
         $statusColor = "#28a745"
         $statusIcon = "✓"
     }
-    elseif ($InstallLog.Status -eq "Failed" -or $DeIdentLog.Status -eq "Failed" -or $RestApiLog.Status -eq "Failed" -or $AccblkLog.Status -eq "Failed" -or $MrnblkLog.Status -eq "Failed") {
+    elseif ($InstallLog.Status -eq "Failed" -or $DeIdentLog.Status -eq "Failed" -or $RestApiLog.Status -eq "Failed" -or $AccblkLog.Status -eq "Failed" -or $MrnblkLog.Status -eq "Failed" -or $Part10Log.Status -eq "Failed") {
         $overallStatus = "FAILED"
         $statusColor = "#dc3545"
         $statusIcon = "✗"
@@ -927,10 +1002,85 @@ $(if ($MrnblkLog.Found -and $MrnblkLog.LastLine) {
                 </div>
             </div>
             
+            <!-- Part10 REST API Test Section -->
+            <div class="section">
+                <div class="section-header">
+                    Part10 REST API Test Results
+                </div>
+                <div class="section-body">
+                    <div class="info-grid">
+                        <div class="info-label">Status:</div>
+                        <div class="info-value">
+                            <span class="status-badge status-$(($Part10Log.Status -replace ' ', '').ToLower())">$($Part10Log.Status)</span>
+                        </div>
+                        
+                        <div class="info-label">Details:</div>
+                        <div class="info-value">$($Part10Log.Details)</div>
+                        
+$(if ($Part10Log.Found -and $Part10Log.TestData) {
+    $testData = $Part10Log.TestData
+"                        <div class='info-label'>Total API Calls:</div>
+                        <div class='info-value'>$($testData.TotalApiCalls)</div>
+                        
+                        <div class='info-label'>Successful Calls:</div>
+                        <div class='info-value' style='color: #28a745; font-weight: bold;'>$($testData.SuccessfulCalls)</div>
+                        
+                        <div class='info-label'>Failed Calls:</div>
+                        <div class='info-value' style='color: $(if ($testData.FailedCalls -gt 0) { '#dc3545' } else { '#6c757d' }); font-weight: bold;'>$($testData.FailedCalls)</div>
+                        
+                        <div class='info-label'>Total Directories Created:</div>
+                        <div class='info-value' style='color: #007bff; font-weight: bold;'>$($testData.TotalDirectoriesCreated)</div>
+                        
+                        <div class='info-label'>Total Files Created:</div>
+                        <div class='info-value' style='color: #007bff; font-weight: bold;'>$($testData.TotalFilesCreated)</div>
+                        
+                        <div class='info-label'>Total Size Increase:</div>
+                        <div class='info-value' style='color: #007bff; font-weight: bold;'>$(
+                            if ($testData.TotalSizeIncrease -eq 0) { '0 B' }
+                            elseif ($testData.TotalSizeIncrease -lt 1KB) { '{0} B' -f $testData.TotalSizeIncrease }
+                            elseif ($testData.TotalSizeIncrease -lt 1MB) { '{0:N2} KB' -f ($testData.TotalSizeIncrease / 1KB) }
+                            elseif ($testData.TotalSizeIncrease -lt 1GB) { '{0:N2} MB' -f ($testData.TotalSizeIncrease / 1MB) }
+                            else { '{0:N2} GB' -f ($testData.TotalSizeIncrease / 1GB) }
+                        )</div>"
+})
+                    </div>
+$(if ($Part10Log.Found -and $Part10Log.TestData -and $Part10Log.TestData.Results) {
+"                    <div style='margin-top: 20px;'>
+                        <strong>API Call Details:</strong>
+                        <table style='width: 100%; margin-top: 10px; border-collapse: collapse;'>
+                            <thead>
+                                <tr style='background: #f8f9fa; border-bottom: 2px solid #dee2e6;'>
+                                    <th style='padding: 10px; text-align: left; border: 1px solid #dee2e6;'>#</th>
+                                    <th style='padding: 10px; text-align: left; border: 1px solid #dee2e6;'>URL</th>
+                                    <th style='padding: 10px; text-align: center; border: 1px solid #dee2e6;'>Status</th>
+                                    <th style='padding: 10px; text-align: center; border: 1px solid #dee2e6;'>Dirs +</th>
+                                    <th style='padding: 10px; text-align: center; border: 1px solid #dee2e6;'>Files +</th>
+                                </tr>
+                            </thead>
+                            <tbody>"
+    foreach ($result in $Part10Log.TestData.Results) {
+        $statusColor = if ($result.Success) { '#28a745' } else { '#dc3545' }
+        $statusText = if ($result.Success) { '✓ Success' } else { '✗ Failed' }
+        $truncatedUrl = if ($result.Url.Length -gt 60) { $result.Url.Substring(0, 57) + '...' } else { $result.Url }
+"                                <tr style='border-bottom: 1px solid #dee2e6;'>
+                                    <td style='padding: 8px; border: 1px solid #dee2e6;'>$($result.CallNumber)</td>
+                                    <td style='padding: 8px; border: 1px solid #dee2e6; font-size: 0.9em;' title='$([System.Web.HttpUtility]::HtmlEncode($result.Url))'>$([System.Web.HttpUtility]::HtmlEncode($truncatedUrl))</td>
+                                    <td style='padding: 8px; text-align: center; border: 1px solid #dee2e6; color: $statusColor; font-weight: bold;'>$statusText</td>
+                                    <td style='padding: 8px; text-align: center; border: 1px solid #dee2e6; font-weight: bold;'>$($result.DirectoriesCreated)</td>
+                                    <td style='padding: 8px; text-align: center; border: 1px solid #dee2e6; font-weight: bold;'>$($result.FilesCreated)</td>
+                                </tr>"
+    }
+"                            </tbody>
+                        </table>
+                    </div>"
+})
+                </div>
+            </div>
+            
             <!-- Summary Statistics -->
             <div class="summary-stats">
                 <div class="stat-item">
-                    <div class="stat-value">5</div>
+                    <div class="stat-value">6</div>
                     <div class="stat-label">Test Phases</div>
                 </div>
                 <div class="stat-item">
@@ -941,7 +1091,8 @@ $(if ($MrnblkLog.Found -and $MrnblkLog.LastLine) {
                         if ($RestApiLog.Status -eq 'Success') { $successCount++ }
                         if ($AccblkLog.Status -eq 'Success') { $successCount++ }
                         if ($MrnblkLog.Status -eq 'Success') { $successCount++ }
-                        [math]::Round(($successCount / 5) * 100, 0).ToString() + '%'
+                        if ($Part10Log.Status -eq 'Success') { $successCount++ }
+                        [math]::Round(($successCount / 6) * 100, 0).ToString() + '%'
                     )</div>
                     <div class="stat-label">Success Rate</div>
                 </div>
@@ -982,28 +1133,32 @@ try {
     Write-ColoredOutput "Report generation started" "INFO"
     
     # Step 1: Get installation log
-    Write-Host "`n[Step 1/6] Analyzing installation logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 1/7] Analyzing installation logs..." -ForegroundColor Cyan
     $installLog = Get-InstallationLog
     
     # Step 2: Get DeIdentification log
-    Write-Host "`n[Step 2/6] Analyzing DeIdentification logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 2/7] Analyzing DeIdentification logs..." -ForegroundColor Cyan
     $deidentLog = Get-DeIdentificationLog
     
     # Step 3: Get REST API test log
-    Write-Host "`n[Step 3/6] Analyzing REST API test logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 3/7] Analyzing REST API test logs..." -ForegroundColor Cyan
     $restApiLog = Get-RestApiTestLog
     
     # Step 4: Get ACCBLK test log
-    Write-Host "`n[Step 4/6] Analyzing ACCBLK test logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 4/7] Analyzing ACCBLK test logs..." -ForegroundColor Cyan
     $accblkLog = Get-AccblkTestLog
     
     # Step 5: Get MRNBLK test log
-    Write-Host "`n[Step 5/6] Analyzing MRNBLK test logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 5/7] Analyzing MRNBLK test logs..." -ForegroundColor Cyan
     $mrnblkLog = Get-MrnblkTestLog
     
-    # Step 6: Generate HTML report
-    Write-Host "`n[Step 6/6] Generating HTML report..." -ForegroundColor Cyan
-    $success = New-HtmlReport -InstallLog $installLog -DeIdentLog $deidentLog -RestApiLog $restApiLog -AccblkLog $accblkLog -MrnblkLog $mrnblkLog
+    # Step 6: Get Part10 test results
+    Write-Host "`n[Step 6/7] Reading Part10 test results..." -ForegroundColor Cyan
+    $part10Log = Get-Part10TestResults
+    
+    # Step 7: Generate HTML report
+    Write-Host "`n[Step 7/7] Generating HTML report..." -ForegroundColor Cyan
+    $success = New-HtmlReport -InstallLog $installLog -DeIdentLog $deidentLog -RestApiLog $restApiLog -AccblkLog $accblkLog -MrnblkLog $mrnblkLog -Part10Log $part10Log
     
     if ($success) {
         Write-Host "`n========================================" -ForegroundColor Green
