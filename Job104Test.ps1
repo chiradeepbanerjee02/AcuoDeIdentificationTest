@@ -36,7 +36,7 @@ $destinationDir = "C:\deidentification\inputwatch"
 $logFilePath = "C:\Windows\tracing\DeidentifyLog\DeidentifyLog.txt"
 $outputDir = "C:\deidentification\output"
 $resultsFile = Join-Path $scriptDir "Job104TestResults.json"
-$expectedLogEntry = "Job ID: 104, Status callback: , successful 1, failed 0, completionPercentage: 100%"
+$expectedLogEntry = "Job ID: 104, Status callback: , successful 3, failed 0, completionPercentage: 100%"
 
 # Function to write colored output
 function Write-ColoredOutput {
