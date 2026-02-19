@@ -9,8 +9,9 @@
     This script performs the following pre-requisite operations before running tests:
     1. Force deletes all subdirectories and files inside "C:\deidentification\output\DIR_OPTION" (uses multiple deletion attempts including rmdir for robustness)
     2. Force deletes all files inside "C:\deidentification\inputwatch" (uses multiple deletion attempts for robustness)
-    3. Restarts the "AcuoDeidentification" Windows service
-    4. Stops the "AcuoDeidentification" Windows service, backs up "DeidentifyLog.txt" with timestamp, deletes the log file, and starts the service again
+    3. Force deletes all subdirectories and files inside "C:\acuo\part10" (uses multiple deletion attempts including rmdir for robustness)
+    4. Restarts the "AcuoDeidentification" Windows service
+    5. Stops the "AcuoDeidentification" Windows service, backs up "DeidentifyLog.txt" with timestamp, deletes the log file, and starts the service again
 
 .EXAMPLE
     .\PreRequisites.ps1
@@ -30,6 +31,7 @@ $ErrorActionPreference = "Stop"
 # Define paths
 $outputDirPath = "C:\deidentification\output"
 $inputWatchPath = "C:\deidentification\inputwatch"
+$part10Path = "C:\acuo\part10"
 $deidentifyLogPath = "C:\Windows\tracing\DeidentifyLog\DeidentifyLog.txt"
 $serviceName = "AcuoDeidentification"
 
@@ -487,19 +489,23 @@ try {
     Write-ColoredOutput "Administrator privileges verified" "SUCCESS"
     
     # Step 1: Force delete subdirectories and files in DIR_OPTION
-    Write-Host "`n[Step 1/4] Cleaning DIR_OPTION directory..." -ForegroundColor Cyan
+    Write-Host "`n[Step 1/5] Cleaning DIR_OPTION directory..." -ForegroundColor Cyan
     Remove-OutputDirectory -Path $outputDirPath
     
     # Step 2: Force delete all files in inputwatch directory
-    Write-Host "`n[Step 2/4] Cleaning inputwatch directory..." -ForegroundColor Cyan
+    Write-Host "`n[Step 2/5] Cleaning inputwatch directory..." -ForegroundColor Cyan
     Remove-InputWatchDirectory -Path $inputWatchPath
     
-    # Step 3: Restart the AcuoDeidentification service
-    Write-Host "`n[Step 3/4] Restarting AcuoDeidentification service..." -ForegroundColor Cyan
+    # Step 3: Force delete subdirectories and files in part10 directory
+    Write-Host "`n[Step 3/5] Cleaning part10 directory..." -ForegroundColor Cyan
+    Remove-OutputDirectory -Path $part10Path
+    
+    # Step 4: Restart the AcuoDeidentification service
+    Write-Host "`n[Step 4/5] Restarting AcuoDeidentification service..." -ForegroundColor Cyan
     Restart-AcuoDeidentificationService -ServiceName $serviceName
     
-    # Step 4: Backup and delete Deidentify.txt log file
-    Write-Host "`n[Step 4/4] Backing up and deleting Deidentify.txt log file..." -ForegroundColor Cyan
+    # Step 5: Backup and delete Deidentify.txt log file
+    Write-Host "`n[Step 5/5] Backing up and deleting Deidentify.txt log file..." -ForegroundColor Cyan
     Backup-AndDeleteDeidentifyLog -LogPath $deidentifyLogPath -ServiceName $serviceName
     
     # Final summary
