@@ -1202,20 +1202,35 @@ $(if ($Job104Log.Found -and $Job104Log.TestData) {
             <!-- Summary Statistics -->
             <div class="summary-stats">
                 <div class="stat-item">
-                    <div class="stat-value">7</div>
+                    <div class="stat-value">$(
+                        $totalTests = 0
+                        if ($InstallLog) { $totalTests++ }
+                        if ($DeIdentLog) { $totalTests++ }
+                        if ($RestApiLog) { $totalTests++ }
+                        if ($AccblkLog) { $totalTests++ }
+                        if ($MrnblkLog) { $totalTests++ }
+                        if ($Part10Log) { $totalTests++ }
+                        if ($Job104Log) { $totalTests++ }
+                        $totalTests
+                    )</div>
                     <div class="stat-label">Test Phases</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">$(
+                        $totalTests = 0
                         $successCount = 0
-                        if ($InstallLog.Status -eq 'Success') { $successCount++ }
-                        if ($DeIdentLog.Status -eq 'Success') { $successCount++ }
-                        if ($RestApiLog.Status -eq 'Success') { $successCount++ }
-                        if ($AccblkLog.Status -eq 'Success') { $successCount++ }
-                        if ($MrnblkLog.Status -eq 'Success') { $successCount++ }
-                        if ($Part10Log.Status -eq 'Success') { $successCount++ }
-                        if ($Job104Log.Status -eq 'Success') { $successCount++ }
-                        [math]::Round(($successCount / 7) * 100, 0).ToString() + '%'
+                        if ($InstallLog) { $totalTests++; if ($InstallLog.Status -eq 'Success') { $successCount++ } }
+                        if ($DeIdentLog) { $totalTests++; if ($DeIdentLog.Status -eq 'Success') { $successCount++ } }
+                        if ($RestApiLog) { $totalTests++; if ($RestApiLog.Status -eq 'Success') { $successCount++ } }
+                        if ($AccblkLog) { $totalTests++; if ($AccblkLog.Status -eq 'Success') { $successCount++ } }
+                        if ($MrnblkLog) { $totalTests++; if ($MrnblkLog.Status -eq 'Success') { $successCount++ } }
+                        if ($Part10Log) { $totalTests++; if ($Part10Log.Status -eq 'Success') { $successCount++ } }
+                        if ($Job104Log) { $totalTests++; if ($Job104Log.Status -eq 'Success') { $successCount++ } }
+                        if ($totalTests -gt 0) { 
+                            [math]::Round(($successCount / $totalTests) * 100, 0).ToString() + '%'
+                        } else {
+                            '0%'
+                        }
                     )</div>
                     <div class="stat-label">Success Rate</div>
                 </div>
