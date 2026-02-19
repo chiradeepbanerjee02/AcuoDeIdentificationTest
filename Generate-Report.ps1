@@ -577,6 +577,76 @@ function Get-Part10TestResults {
     }
 }
 
+# Function to read Job 104 test results
+function Get-Job104TestResults {
+    Write-ColoredOutput "Reading Job 104 test results..." "INFO"
+    
+    $resultsFilePath = Join-Path $scriptDir "Job104TestResults.json"
+    
+    if (-not (Test-Path $resultsFilePath)) {
+        Write-ColoredOutput "Job 104 test results file not found: $resultsFilePath" "WARNING"
+        return @{
+            Found = $false
+            Status = "Not Found"
+            Details = "Job 104 test results file does not exist. Test may not have been run."
+        }
+    }
+    
+    try {
+        $resultsJson = Get-Content -Path $resultsFilePath -Raw | ConvertFrom-Json
+        
+        if (-not $resultsJson) {
+            return @{
+                Found = $true
+                Status = "Error"
+                Details = "Job 104 test results file is empty or invalid"
+            }
+        }
+        
+        # Determine overall status
+        $status = "Unknown"
+        $details = ""
+        
+        if ($resultsJson.PSObject.Properties['Success'] -and -not $resultsJson.Success) {
+            $status = "Failed"
+            $details = "Job 104 test execution failed: $($resultsJson.Error)"
+        }
+        elseif ($resultsJson.PSObject.Properties['VerificationPassed']) {
+            if ($resultsJson.VerificationPassed) {
+                $status = "Success"
+                $details = "Job 104 completed successfully. Created $($resultsJson.TotalFilesCreated) files and $($resultsJson.TotalDirectoriesCreated) directories"
+            }
+            else {
+                $status = "Failed"
+                $details = "Job 104 verification failed"
+            }
+        }
+        else {
+            $status = "No Data"
+            $details = "Job 104 test data incomplete"
+        }
+        
+        Write-ColoredOutput "Job 104 test results loaded successfully" "SUCCESS"
+        Write-ColoredOutput "Status: $status - $details" "INFO"
+        
+        return @{
+            Found = $true
+            Status = $status
+            Details = $details
+            TestData = $resultsJson
+            ResultsFile = $resultsFilePath
+        }
+    }
+    catch {
+        Write-ColoredOutput "Error reading Job 104 test results: $_" "ERROR"
+        return @{
+            Found = $false
+            Status = "Error"
+            Details = "Failed to read Job 104 test results: $_"
+        }
+    }
+}
+
 # Function to generate HTML report
 function New-HtmlReport {
     param(
@@ -585,7 +655,8 @@ function New-HtmlReport {
         [hashtable]$RestApiLog,
         [hashtable]$AccblkLog,
         [hashtable]$MrnblkLog,
-        [hashtable]$Part10Log
+        [hashtable]$Part10Log,
+        [hashtable]$Job104Log
     )
     
     Write-ColoredOutput "Generating HTML report..." "INFO"
@@ -594,12 +665,12 @@ function New-HtmlReport {
     $overallStatus = "Unknown"
     
     # Determine overall status
-    if ($InstallLog.Status -eq "Success" -and $DeIdentLog.Status -eq "Success" -and $RestApiLog.Status -eq "Success" -and $AccblkLog.Status -eq "Success" -and $MrnblkLog.Status -eq "Success" -and $Part10Log.Status -eq "Success") {
+    if ($InstallLog.Status -eq "Success" -and $DeIdentLog.Status -eq "Success" -and $RestApiLog.Status -eq "Success" -and $AccblkLog.Status -eq "Success" -and $MrnblkLog.Status -eq "Success" -and $Part10Log.Status -eq "Success" -and $Job104Log.Status -eq "Success") {
         $overallStatus = "PASSED"
         $statusColor = "#28a745"
         $statusIcon = "✓"
     }
-    elseif ($InstallLog.Status -eq "Failed" -or $DeIdentLog.Status -eq "Failed" -or $RestApiLog.Status -eq "Failed" -or $AccblkLog.Status -eq "Failed" -or $MrnblkLog.Status -eq "Failed" -or $Part10Log.Status -eq "Failed") {
+    elseif ($InstallLog.Status -eq "Failed" -or $DeIdentLog.Status -eq "Failed" -or $RestApiLog.Status -eq "Failed" -or $AccblkLog.Status -eq "Failed" -or $MrnblkLog.Status -eq "Failed" -or $Part10Log.Status -eq "Failed" -or $Job104Log.Status -eq "Failed") {
         $overallStatus = "FAILED"
         $statusColor = "#dc3545"
         $statusIcon = "✗"
@@ -1077,10 +1148,61 @@ $(if ($Part10Log.Found -and $Part10Log.TestData -and $Part10Log.TestData.Results
                 </div>
             </div>
             
+            <!-- Job 104 DeIdentification Test Section -->
+            <div class="section">
+                <div class="section-header">
+                    Job 104 DeIdentification Test Results
+                </div>
+                <div class="section-body">
+                    <div class="info-grid">
+                        <div class="info-label">Status:</div>
+                        <div class="info-value">
+                            <span class="status-badge status-$(($Job104Log.Status -replace ' ', '').ToLower())">$($Job104Log.Status)</span>
+                        </div>
+                        
+                        <div class="info-label">Details:</div>
+                        <div class="info-value">$($Job104Log.Details)</div>
+                        
+$(if ($Job104Log.Found -and $Job104Log.TestData) {
+    $testData = $Job104Log.TestData
+"                        <div class='info-label'>Job ID:</div>
+                        <div class='info-value'>$($testData.JobId)</div>
+                        
+                        <div class='info-label'>Output Directory:</div>
+                        <div class='info-value'>$($testData.OutputDirectory)</div>
+                        
+                        <div class='info-label'>Total Directories Created:</div>
+                        <div class='info-value' style='color: #007bff; font-weight: bold;'>$($testData.TotalDirectoriesCreated)</div>
+                        
+                        <div class='info-label'>Total Files Created:</div>
+                        <div class='info-value' style='color: #007bff; font-weight: bold;'>$($testData.TotalFilesCreated)</div>
+                        
+                        <div class='info-label'>Total Size Increase:</div>
+                        <div class='info-value' style='color: #007bff; font-weight: bold;'>$(
+                            if ($testData.TotalSizeIncrease -eq 0) { '0 B' }
+                            elseif ($testData.TotalSizeIncrease -lt 1KB) { '{0} B' -f $testData.TotalSizeIncrease }
+                            elseif ($testData.TotalSizeIncrease -lt 1MB) { '{0:N2} KB' -f ($testData.TotalSizeIncrease / 1KB) }
+                            elseif ($testData.TotalSizeIncrease -lt 1GB) { '{0:N2} MB' -f ($testData.TotalSizeIncrease / 1MB) }
+                            else { '{0:N2} GB' -f ($testData.TotalSizeIncrease / 1GB) }
+                        )</div>
+                        
+                        <div class='info-label'>Initial State:</div>
+                        <div class='info-value'>$($testData.InitialDirectories) directories, $($testData.InitialFiles) files</div>
+                        
+                        <div class='info-label'>Final State:</div>
+                        <div class='info-value'>$($testData.FinalDirectories) directories, $($testData.FinalFiles) files</div>
+                        
+                        <div class='info-label'>Execution Time:</div>
+                        <div class='info-value'>$($testData.ExecutionTime)</div>"
+})
+                    </div>
+                </div>
+            </div>
+            
             <!-- Summary Statistics -->
             <div class="summary-stats">
                 <div class="stat-item">
-                    <div class="stat-value">6</div>
+                    <div class="stat-value">7</div>
                     <div class="stat-label">Test Phases</div>
                 </div>
                 <div class="stat-item">
@@ -1092,7 +1214,8 @@ $(if ($Part10Log.Found -and $Part10Log.TestData -and $Part10Log.TestData.Results
                         if ($AccblkLog.Status -eq 'Success') { $successCount++ }
                         if ($MrnblkLog.Status -eq 'Success') { $successCount++ }
                         if ($Part10Log.Status -eq 'Success') { $successCount++ }
-                        [math]::Round(($successCount / 6) * 100, 0).ToString() + '%'
+                        if ($Job104Log.Status -eq 'Success') { $successCount++ }
+                        [math]::Round(($successCount / 7) * 100, 0).ToString() + '%'
                     )</div>
                     <div class="stat-label">Success Rate</div>
                 </div>
@@ -1133,32 +1256,36 @@ try {
     Write-ColoredOutput "Report generation started" "INFO"
     
     # Step 1: Get installation log
-    Write-Host "`n[Step 1/7] Analyzing installation logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 1/8] Analyzing installation logs..." -ForegroundColor Cyan
     $installLog = Get-InstallationLog
     
     # Step 2: Get DeIdentification log
-    Write-Host "`n[Step 2/7] Analyzing DeIdentification logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 2/8] Analyzing DeIdentification logs..." -ForegroundColor Cyan
     $deidentLog = Get-DeIdentificationLog
     
     # Step 3: Get REST API test log
-    Write-Host "`n[Step 3/7] Analyzing REST API test logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 3/8] Analyzing REST API test logs..." -ForegroundColor Cyan
     $restApiLog = Get-RestApiTestLog
     
     # Step 4: Get ACCBLK test log
-    Write-Host "`n[Step 4/7] Analyzing ACCBLK test logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 4/8] Analyzing ACCBLK test logs..." -ForegroundColor Cyan
     $accblkLog = Get-AccblkTestLog
     
     # Step 5: Get MRNBLK test log
-    Write-Host "`n[Step 5/7] Analyzing MRNBLK test logs..." -ForegroundColor Cyan
+    Write-Host "`n[Step 5/8] Analyzing MRNBLK test logs..." -ForegroundColor Cyan
     $mrnblkLog = Get-MrnblkTestLog
     
     # Step 6: Get Part10 test results
-    Write-Host "`n[Step 6/7] Reading Part10 test results..." -ForegroundColor Cyan
+    Write-Host "`n[Step 6/8] Reading Part10 test results..." -ForegroundColor Cyan
     $part10Log = Get-Part10TestResults
     
-    # Step 7: Generate HTML report
-    Write-Host "`n[Step 7/7] Generating HTML report..." -ForegroundColor Cyan
-    $success = New-HtmlReport -InstallLog $installLog -DeIdentLog $deidentLog -RestApiLog $restApiLog -AccblkLog $accblkLog -MrnblkLog $mrnblkLog -Part10Log $part10Log
+    # Step 7: Get Job 104 test results
+    Write-Host "`n[Step 7/8] Reading Job 104 test results..." -ForegroundColor Cyan
+    $job104Log = Get-Job104TestResults
+    
+    # Step 8: Generate HTML report
+    Write-Host "`n[Step 8/8] Generating HTML report..." -ForegroundColor Cyan
+    $success = New-HtmlReport -InstallLog $installLog -DeIdentLog $deidentLog -RestApiLog $restApiLog -AccblkLog $accblkLog -MrnblkLog $mrnblkLog -Part10Log $part10Log -Job104Log $job104Log
     
     if ($success) {
         Write-Host "`n========================================" -ForegroundColor Green
