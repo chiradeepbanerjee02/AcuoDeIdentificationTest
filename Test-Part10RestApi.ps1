@@ -140,6 +140,26 @@ try {
     
     Write-ColoredOutput "Test script started" "INFO"
     
+    # Force delete all subdirectories and files under C:\Acuo\part10 before testing
+    Write-Host "`n========================================" -ForegroundColor Cyan
+    Write-Host "Initial Cleanup - Deleting part10 Directory" -ForegroundColor Cyan
+    Write-Host "========================================`n" -ForegroundColor Cyan
+    
+    if (Test-Path $part10Dir) {
+        try {
+            Write-ColoredOutput "Force deleting all contents of $part10Dir..." "INFO"
+            Remove-Item -Path "$part10Dir\*" -Recurse -Force -ErrorAction Stop
+            Write-ColoredOutput "part10 directory contents deleted successfully" "SUCCESS"
+        }
+        catch {
+            Write-ColoredOutput "Error deleting part10 directory contents: $_" "WARNING"
+            Write-Host "Warning: $_" -ForegroundColor Yellow
+        }
+    }
+    else {
+        Write-ColoredOutput "part10 directory does not exist, skipping initial cleanup" "INFO"
+    }
+    
     # Check if API calls file exists
     if (-not (Test-Path $apiCallsFile)) {
         Write-ColoredOutput "API calls file not found: $apiCallsFile" "ERROR"

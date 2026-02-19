@@ -30,6 +30,24 @@ This repository contains PowerShell scripts for installing, configuring, and tes
   - Waiting for processing completion
   - Verifying successful completion in logs (Job ID: 101)
 
+- **`Test-Part10RestApi.ps1`** - Tests Part10 REST API functionality by:
+  - Force deletes all subdirectories and files under `C:\Acuo\part10` before testing
+  - Reads REST API URLs from `AcuoAccessP10Calls.txt`
+  - For each URL, triggers the REST API call
+  - Scans `C:\Acuo\part10` directory before and after each call
+  - Counts directories and files created as a result of each call
+  - Archives the part10 directory with timestamp after testing
+  - Cleans up part10 directory contents after archiving
+  - Saves results to `Part10TestResults.json` for HTML report generation
+
+- **`Job104Test.ps1`** - Tests Job 104 DeIdentification functionality:
+  - Copies test profile (Job ID: 104) to input watch directory
+  - Waits for processing to complete
+  - Verifies successful deidentification in logs
+  - Counts new files and folders created in output directory
+  - Calculates total size of new files
+  - Saves results to `Job104TestResults.json` for HTML report generation
+
 - **`ACCBLKTest.ps1`** - Tests ACCBLK (Accession Number Block) functionality:
   - Processes ACCBLK test profile (Job ID: 102)
   - Verifies block list processing
@@ -44,9 +62,11 @@ This repository contains PowerShell scripts for installing, configuring, and tes
   - Log analysis and validation
 
 ### Test Data Files
-- **`100_DefaultProfile_02142026.txt`** - Default profile for input watch testing
-- **`102_DefaultProfile_02182025.txt`** - ACCBLK test profile
-- **`103_DefaultProfile_02182025.txt`** - MRNBLK test profile
+- **`100_DefaultProfile_02142026.txt`** - Default profile for input watch testing (Job ID: 100)
+- **`102_DefaultProfile_02182025.txt`** - ACCBLK test profile (Job ID: 102)
+- **`103_DefaultProfile_02182025.txt`** - MRNBLK test profile (Job ID: 103)
+- **`104_DefaultProfile_02192026.txt`** - Test profile for Job 104 deidentification testing
+- **`AcuoAccessP10Calls.txt`** - Contains REST API URLs for Part10 testing
 - **`requestbody.txt`** - JSON request body for REST API testing
 
 ### GitHub Actions
@@ -97,6 +117,8 @@ This will:
    .\RestApiTest.ps1
    .\ACCBLKTest.ps1
    .\MRNBLKTest.ps1
+   .\Job104Test.ps1
+   .\Test-Part10RestApi.ps1
    ```
 
 4. **Generate HTML report**:
@@ -148,12 +170,16 @@ AcuoDeIdentificationTest/
 ├── PreRequisites.ps1                # Pre-test cleanup script
 ├── InputWatchTest.ps1               # Input watch test
 ├── RestApiTest.ps1                  # REST API test
+├── Test-Part10RestApi.ps1           # Part10 REST API test
+├── Job104Test.ps1                   # Job 104 deidentification test
 ├── ACCBLKTest.ps1                   # Accession number block test
 ├── MRNBLKTest.ps1                   # Medical record number block test
 ├── Generate-Report.ps1              # Report generation script
 ├── 100_DefaultProfile_02142026.txt  # Test profile (default)
 ├── 102_DefaultProfile_02182025.txt  # Test profile (ACCBLK)
 ├── 103_DefaultProfile_02182025.txt  # Test profile (MRNBLK)
+├── 104_DefaultProfile_02192026.txt  # Test profile (Job 104)
+├── AcuoAccessP10Calls.txt           # Part10 REST API URLs
 ├── requestbody.txt                  # REST API request body
 └── README.md                        # This file
 ```
