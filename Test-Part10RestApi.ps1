@@ -6,11 +6,14 @@
 
 .DESCRIPTION
     This script performs the following test operations:
-    1. Reads REST API URLs from AcuoAccessP10Calls.txt
-    2. For each URL, triggers the REST API call
-    3. Scans C:/Acuo/part10 directory before and after each call
-    4. Counts directories and files created as a result of each call
-    5. Saves results to Part10TestResults.json for HTML report generation
+    1. Force deletes all subdirectories and files under C:/Acuo/part10 before testing
+    2. Reads REST API URLs from AcuoAccessP10Calls.txt
+    3. For each URL, triggers the REST API call
+    4. Scans C:/Acuo/part10 directory before and after each call
+    5. Counts directories and files created as a result of each call
+    6. Archives the part10 directory with timestamp after testing
+    7. Cleans up part10 directory contents after archiving
+    8. Saves results to Part10TestResults.json for HTML report generation
 
 .EXAMPLE
     .\Test-Part10RestApi.ps1
@@ -18,6 +21,7 @@
 .NOTES
     - Run this script from the repository directory where AcuoAccessP10Calls.txt is located
     - Results are saved to Part10TestResults.json in the same directory
+    - The C:/Acuo/part10 directory is cleaned at the start and archived/cleaned at the end
 #>
 
 [CmdletBinding()]
