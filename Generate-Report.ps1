@@ -1121,7 +1121,6 @@ $(if ($Part10Log.Found -and $Part10Log.TestData -and $Part10Log.TestData.Results
                                     <th style='padding: 10px; text-align: left; border: 1px solid #dee2e6;'>#</th>
                                     <th style='padding: 10px; text-align: left; border: 1px solid #dee2e6;'>URL</th>
                                     <th style='padding: 10px; text-align: center; border: 1px solid #dee2e6;'>Status</th>
-                                    <th style='padding: 10px; text-align: center; border: 1px solid #dee2e6;'>Dirs +</th>
                                     <th style='padding: 10px; text-align: center; border: 1px solid #dee2e6;'>Files +</th>
                                 </tr>
                             </thead>
@@ -1134,7 +1133,6 @@ $(if ($Part10Log.Found -and $Part10Log.TestData -and $Part10Log.TestData.Results
                                     <td style='padding: 8px; border: 1px solid #dee2e6;'>$($result.CallNumber)</td>
                                     <td style='padding: 8px; border: 1px solid #dee2e6; font-size: 0.9em;' title='$([System.Web.HttpUtility]::HtmlEncode($result.Url))'>$([System.Web.HttpUtility]::HtmlEncode($truncatedUrl))</td>
                                     <td style='padding: 8px; text-align: center; border: 1px solid #dee2e6; color: $statusColor; font-weight: bold;'>$statusText</td>
-                                    <td style='padding: 8px; text-align: center; border: 1px solid #dee2e6; font-weight: bold;'>$($result.DirectoriesCreated)</td>
                                     <td style='padding: 8px; text-align: center; border: 1px solid #dee2e6; font-weight: bold;'>$($result.FilesCreated)</td>
                                 </tr>"
     }
