@@ -614,7 +614,7 @@ function Get-Job104TestResults {
         elseif ($resultsJson.PSObject.Properties['VerificationPassed']) {
             if ($resultsJson.VerificationPassed) {
                 $status = "Success"
-                $details = "Job 104 completed successfully. Created $($resultsJson.TotalFilesCreated) files and $($resultsJson.TotalDirectoriesCreated) directories"
+                $details = "Job 104 completed successfully. Created $($resultsJson.TotalFilesCreated) files"
             }
             else {
                 $status = "Failed"
@@ -1099,9 +1099,6 @@ $(if ($Part10Log.Found -and $Part10Log.TestData) {
                         <div class='info-label'>Failed Calls:</div>
                         <div class='info-value' style='color: $(if ($testData.FailedCalls -gt 0) { '#dc3545' } else { '#6c757d' }); font-weight: bold;'>$($testData.FailedCalls)</div>
                         
-                        <div class='info-label'>Total Directories Created:</div>
-                        <div class='info-value' style='color: #007bff; font-weight: bold;'>$($testData.TotalDirectoriesCreated)</div>
-                        
                         <div class='info-label'>Total Files Created:</div>
                         <div class='info-value' style='color: #007bff; font-weight: bold;'>$($testData.TotalFilesCreated)</div>
                         
@@ -1124,7 +1121,6 @@ $(if ($Part10Log.Found -and $Part10Log.TestData -and $Part10Log.TestData.Results
                                     <th style='padding: 10px; text-align: left; border: 1px solid #dee2e6;'>#</th>
                                     <th style='padding: 10px; text-align: left; border: 1px solid #dee2e6;'>URL</th>
                                     <th style='padding: 10px; text-align: center; border: 1px solid #dee2e6;'>Status</th>
-                                    <th style='padding: 10px; text-align: center; border: 1px solid #dee2e6;'>Dirs +</th>
                                     <th style='padding: 10px; text-align: center; border: 1px solid #dee2e6;'>Files +</th>
                                 </tr>
                             </thead>
@@ -1137,7 +1133,6 @@ $(if ($Part10Log.Found -and $Part10Log.TestData -and $Part10Log.TestData.Results
                                     <td style='padding: 8px; border: 1px solid #dee2e6;'>$($result.CallNumber)</td>
                                     <td style='padding: 8px; border: 1px solid #dee2e6; font-size: 0.9em;' title='$([System.Web.HttpUtility]::HtmlEncode($result.Url))'>$([System.Web.HttpUtility]::HtmlEncode($truncatedUrl))</td>
                                     <td style='padding: 8px; text-align: center; border: 1px solid #dee2e6; color: $statusColor; font-weight: bold;'>$statusText</td>
-                                    <td style='padding: 8px; text-align: center; border: 1px solid #dee2e6; font-weight: bold;'>$($result.DirectoriesCreated)</td>
                                     <td style='padding: 8px; text-align: center; border: 1px solid #dee2e6; font-weight: bold;'>$($result.FilesCreated)</td>
                                 </tr>"
     }
@@ -1170,9 +1165,6 @@ $(if ($Job104Log.Found -and $Job104Log.TestData) {
                         
                         <div class='info-label'>Output Directory:</div>
                         <div class='info-value'>$($testData.OutputDirectory)</div>
-                        
-                        <div class='info-label'>Total Directories Created:</div>
-                        <div class='info-value' style='color: #007bff; font-weight: bold;'>$($testData.TotalDirectoriesCreated)</div>
                         
                         <div class='info-label'>Total Files Created:</div>
                         <div class='info-value' style='color: #007bff; font-weight: bold;'>$($testData.TotalFilesCreated)</div>
